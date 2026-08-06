@@ -105,7 +105,7 @@ function App() {
   const [complexityId, setComplexityId] = useSavedState("calc-complexity", "standard");
   const [selectedModules, setSelectedModules] = useSavedState("calc-modules", []);
   const [moduleDraft, setModuleDraft] = useState("");
-  const [rounding, setRounding] = useSavedState("calc-rounding", "charm");
+  const [rounding, setRounding] = useSavedState("calc-rounding", "exact");
   const [discountRate, setDiscountRate] = useSavedState("calc-discount", 0);
   const [manualAdjustment, setManualAdjustment] = useSavedState("calc-adjustment", 0);
   const [infrastructure, setInfrastructure] = useSavedState("calc-infra", "standard");
@@ -145,7 +145,8 @@ function App() {
   const addonTotal = chargeableItems.reduce((sum, item) => sum + item.price, 0);
   const complexityCost = Math.round((base.price + addonTotal) * complexity.rate);
   const subtotal = Math.max(0, base.price + addonTotal + complexityCost + manualAdjustment);
-  const roundedPrice = subtotal <= 0 ? 0 : rounding === "exact" ? subtotal
+  const hasScopePriceChange = addonTotal !== 0 || complexityCost !== 0 || manualAdjustment !== 0;
+  const roundedPrice = subtotal <= 0 ? 0 : !hasScopePriceChange || rounding === "exact" ? subtotal
     : rounding === "50k" ? Math.ceil(subtotal / 50000) * 50000
     : Math.max(99000, Math.round(subtotal / 500000) * 500000 - 1000);
   const discount = Math.round(roundedPrice * Number(discountRate));
@@ -170,7 +171,7 @@ function App() {
 
   const reset = () => {
     setSegment("umkm"); setPackageId("operational-standard"); setComplexityId("standard");
-    setSelectedModules([]); setRounding("charm"); setDiscountRate(0); setManualAdjustment(0);
+    setSelectedModules([]); setRounding("exact"); setDiscountRate(0); setManualAdjustment(0);
     setInfrastructure("standard"); setTools("none"); setMarketingCostRate(0); setOverheadRate(0.05); setOtherCost(0);
   };
 
@@ -223,8 +224,8 @@ function App() {
             <SelectField label="Diskon" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))}>
               <option value={0}>Tanpa diskon</option><option value={0.05}>Diskon 5%</option><option value={0.1}>Diskon 10%</option><option value={0.15}>Diskon 15%</option>
             </SelectField>
-            <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)}>
-              <option value="charm">Charm price x.999</option><option value="50k">Bulat ke atas 50 ribu</option><option value="exact">Nominal exact</option>
+            <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)} hint="Harga paket tetap exact jika belum ada tambahan scope">
+              <option value="exact">Harga sesuai kalkulasi</option><option value="50k">Bulat ke atas 50 ribu</option><option value="charm">Charm price x.999</option>
             </SelectField>
             <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Tambahan effort atau custom request"/>
           </div>
