@@ -52,7 +52,14 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:3px soli
 .select-wrap select { width:100%; min-height:45px; appearance:none; padding:0 37px 0 12px; color:var(--ink); border:1px solid var(--line); border-radius:0; background:#fafbfc; font-size:10px; outline:0; }
 .select-wrap > svg { position:absolute; top:50%; right:12px; pointer-events:none; color:var(--muted); transform:translateY(-50%); }
 .select-wrap select:focus { border-color:var(--cyan); background:#fff; }
+.select-wrap select:disabled { color:#9199a3; cursor:not-allowed; background:#eef1f4; }
 .addon-builder { margin:27px 0; padding:22px; border:1px solid var(--line); background:#f7f9fb; }
+.addon-title { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:9px; }
+.addon-title .section-label { margin:0; }
+.addon-title > span { color:var(--navy); font-size:7px; font-weight:800; text-align:right; }
+.addon-guidance { display:flex; gap:8px; align-items:flex-start; margin-bottom:11px; padding:10px 11px; border-left:2px solid var(--cyan); background:#edf8fb; }
+.addon-guidance svg { flex:0 0 auto; color:var(--navy); }
+.addon-guidance p { margin:0; color:#52657a; font-size:7px; line-height:1.5; }
 .add-row { display:grid; grid-template-columns:1fr auto; gap:8px; }
 .add-row button { display:flex; align-items:center; gap:6px; min-height:45px; padding:0 15px; color:var(--ink); background:var(--lime); font-size:9px; font-weight:800; }
 .add-row button:disabled { opacity:.45; cursor:not-allowed; }

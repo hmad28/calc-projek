@@ -49,6 +49,26 @@ const companySplit = [
   ["Misc / Bonus Pool", 0.05, 0.015, "Bonus performa dan team event"]
 ];
 
+const addonCompatibility = {
+  "Website Personal": ["cms", "blog", "gallery", "form", "wa-template", "document"],
+  "Personal Blog": ["gallery", "form", "wa-template", "email", "document"],
+  "Wedding": ["gallery", "form", "wa-template", "qr-generator", "qr-scanner", "qr-attendance", "dashboard", "export"],
+  "Institusi": ["cms", "blog", "gallery", "form", "database", "wa-template", "email", "report", "dashboard", "export", "document"],
+  "Website UMKM": ["cms", "blog", "gallery", "form", "database", "booking", "order", "wa-template", "email", "report", "dashboard"],
+  "Sistem Bisnis UMKM": ["form", "database", "login", "multi-role", "booking", "order", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
+  "Event": ["form", "database", "login", "multi-role", "order", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner", "qr-attendance"],
+  "Institusi Operasional": modules.map(item => item.id),
+  "E-Commerce": ["login", "multi-role", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
+  "POS": ["login", "multi-role", "inventory", "approval", "qris", "notification", "report", "dashboard", "export", "audit", "document"],
+  "Booking": ["booking", "login", "multi-role", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
+  "CRM": ["form", "database", "login", "multi-role", "approval", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
+  "Website Corporate": ["cms", "blog", "gallery", "form", "database", "login", "multi-role", "wa-template", "email", "report", "dashboard", "document"],
+  "Operational / CRM": ["form", "database", "login", "multi-role", "booking", "order", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
+  "Government": ["cms", "blog", "gallery", "form", "database", "login", "multi-role", "approval", "wa-template", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
+  "Healthcare": ["form", "database", "login", "multi-role", "booking", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
+  "ERP / SaaS / Custom": modules.map(item => item.id)
+};
+
 function useSavedState(key, initial) {
   const [value, setValue] = useState(() => {
     try { return JSON.parse(localStorage.getItem(key)) ?? initial; } catch { return initial; }
@@ -101,6 +121,14 @@ function App() {
 
   const base = packages.find(item => item.id === packageId) || segmentPackages[0] || packages[0];
   const complexity = complexityOptions.find(item => item.id === complexityId) || complexityOptions[0];
+  const compatibleAddonIds = addonCompatibility[base.solution] || [];
+  const availableModules = modules.filter(item => compatibleAddonIds.includes(item.id) && !base.features.includes(item.id) && !selectedModules.includes(item.id));
+  const availableModuleGroups = [...new Set(availableModules.map(item => item.group))];
+
+  useEffect(() => {
+    setSelectedModules(previous => previous.filter(id => compatibleAddonIds.includes(id) && !base.features.includes(id)));
+    setModuleDraft("");
+  }, [base.id]);
 
   const dependencyIds = useMemo(() => {
     const found = new Set();
@@ -117,11 +145,11 @@ function App() {
   const addonTotal = chargeableItems.reduce((sum, item) => sum + item.price, 0);
   const complexityCost = Math.round((base.price + addonTotal) * complexity.rate);
   const subtotal = Math.max(0, base.price + addonTotal + complexityCost + manualAdjustment);
-  const discount = Math.round(subtotal * Number(discountRate));
-  const beforeRounding = Math.max(0, subtotal - discount);
-  const sellingPrice = beforeRounding <= 0 ? 0 : rounding === "exact" ? beforeRounding
-    : rounding === "50k" ? Math.ceil(beforeRounding / 50000) * 50000
-    : Math.max(99000, Math.round(beforeRounding / 500000) * 500000 - 1000);
+  const roundedPrice = subtotal <= 0 ? 0 : rounding === "exact" ? subtotal
+    : rounding === "50k" ? Math.ceil(subtotal / 50000) * 50000
+    : Math.max(99000, Math.round(subtotal / 500000) * 500000 - 1000);
+  const discount = Math.round(roundedPrice * Number(discountRate));
+  const sellingPrice = Math.max(0, roundedPrice - discount);
 
   const infrastructureCost = fixedCostOptions.infrastructure.find(item => item[0] === infrastructure)?.[2] || 0;
   const toolsCost = fixedCostOptions.tools.find(item => item[0] === tools)?.[2] || 0;
@@ -182,8 +210,9 @@ function App() {
           {base.custom && <div className="custom-quote-notice"><Sparkles size={17}/><div><strong>Custom Quotation</strong><p>Paket ini tidak punya harga otomatis. Masukkan estimasi awal pada Adjustment manual, lalu tambahkan fitur dan biaya sesuai hasil scoping.</p></div></div>}
 
           <div className="addon-builder">
-            <label className="section-label">Add-on project</label>
-            <div className="add-row"><div className="select-wrap"><select value={moduleDraft} onChange={e => setModuleDraft(e.target.value)}><option value="">Pilih fitur tambahan…</option>{modules.filter(item => !selectedModules.includes(item.id)).map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}</select><ChevronDown size={15}/></div><button onClick={addModule} disabled={!moduleDraft}><Plus size={17}/> Tambah</button></div>
+            <div className="addon-title"><label className="section-label">Add-on project</label><span>{base.solution} · {availableModules.length} pilihan relevan</span></div>
+            <div className="addon-guidance"><ShieldCheck size={15}/><p>Hanya menampilkan add-on yang cocok untuk <strong>{base.name}</strong>. Fitur yang sudah included disembunyikan otomatis.</p></div>
+            <div className="add-row"><div className="select-wrap"><select value={moduleDraft} onChange={e => setModuleDraft(e.target.value)} disabled={!availableModules.length}><option value="">{availableModules.length ? "Pilih fitur tambahan…" : "Semua fitur relevan sudah dipilih / included"}</option>{availableModuleGroups.map(group => <optgroup label={group} key={group}>{availableModules.filter(item => item.group === group).map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}</optgroup>)}</select><ChevronDown size={15}/></div><button onClick={addModule} disabled={!moduleDraft}><Plus size={17}/> Tambah</button></div>
             <div className="selected-addons">{selectedItems.length ? selectedItems.map(item => {
               const included = base.features.includes(item.id); const dependency = dependencyIds.includes(item.id);
               return <div key={item.id}><span><Check size={13}/></span><div><strong>{item.name}</strong><small>{included ? "Sudah termasuk paket" : dependency ? "Dependency otomatis" : "Add-on"}</small></div><b>{included ? "Included" : rupiah(item.price)}</b>{!dependency && <button onClick={() => setSelectedModules(prev => prev.filter(id => id !== item.id))}><Trash2 size={14}/></button>}</div>;
@@ -225,7 +254,7 @@ function App() {
       <aside className="result-column">
         <article className="result-card">
           <div className="result-label"><span>LIVE RESULT</span><CircleDollarSign size={19}/></div>
-          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}</small></div>
+          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}{discount > 0 ? ` · diskon ${Math.round(Number(discountRate) * 100)}% (-${rupiah(discount)})` : ""}</small></div>
           <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className={netRevenue < 0 ? "net loss" : "net"}><span>{netRevenue < 0 ? "Proyeksi rugi" : "Revenue bersih"}</span><b>{rupiah(netRevenue)}</b></div></div>
           <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{netRevenue < 0 ? "Biaya melebihi harga project" : margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
           <div className="pool-preview"><div><i style={{ width: "40%" }}/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div><i style={{ width: "30%" }}/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div><i style={{ width: "30%" }}/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>

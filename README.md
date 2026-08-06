@@ -25,9 +25,9 @@ Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung proje
 - Dropdown paket dasar yang dikelompokkan berdasarkan jenis layanan.
 - Dukungan harga fixed, range, mulai dari, dan Custom Quotation.
 - Estimasi kompleksitas Standard, Moderate, Complex, atau Advanced.
-- Add-on picker dengan harga realtime.
+- Add-on picker yang difilter otomatis berdasarkan jenis paket.
 - Dependency otomatis dan pencegahan double charge untuk fitur included.
-- Diskon, adjustment manual, dan pilihan pembulatan harga.
+- Diskon yang diterapkan setelah pembulatan, adjustment manual, dan pilihan pembulatan harga.
 - Estimasi biaya:
   - domain dan infrastructure;
   - tools, API, dan software;
