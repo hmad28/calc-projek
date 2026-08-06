@@ -76,7 +76,7 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:3px soli
 .custom-quote-notice svg { flex:0 0 auto; color:#688000; }
 .custom-quote-notice strong { display:block; color:#395000; font-size:9px; }
 .custom-quote-notice p { margin:4px 0 0; color:#61713c; font-size:8px; line-height:1.55; }
-.price-options { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.price-options { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .money-input { display:grid; grid-template-columns:40px 1fr; min-height:45px; align-items:center; border:1px solid var(--line); background:#fafbfc; }
 .money-input b { padding-left:12px; color:var(--muted); font-size:9px; }
 .money-input input { width:100%; min-width:0; border:0; outline:0; background:transparent; font-size:10px; }
@@ -88,7 +88,7 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:3px soli
 .cost-note { display:flex; gap:10px; align-items:flex-start; margin-bottom:24px; padding:13px 15px; border-left:3px solid var(--cyan); background:#edf8fb; }
 .cost-note svg { flex:0 0 auto; color:var(--navy); }
 .cost-note p { margin:0; color:#40536a; font-size:8px; line-height:1.55; }
-.cost-breakdown { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:26px; border:1px solid var(--line); background:var(--line); }
+.cost-breakdown { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1px; margin-top:26px; border:1px solid var(--line); background:var(--line); }
 .cost-breakdown > div { display:grid; gap:8px; padding:14px; background:#fff; }
 .cost-breakdown svg { color:var(--navy); }
 .cost-breakdown span { color:var(--muted); font-size:7px; }

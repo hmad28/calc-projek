@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowDown, Calculator, Check, ChevronDown, CircleDollarSign, Code2,
   Copy, Landmark, Megaphone, Minus, Plus, Printer, ReceiptText,
-  RefreshCcw, Server, ShieldCheck, Sparkles, Trash2, TrendingUp,
+  Globe2, HardDrive, RefreshCcw, ShieldCheck, Sparkles, Trash2, TrendingUp,
   WalletCards
 } from "lucide-react";
 import { modules, packagePriceLabel, packages, rupiah, segments } from "./data";
@@ -17,9 +17,15 @@ const complexityOptions = [
 ];
 
 const fixedCostOptions = {
-  infrastructure: [
+  domain: [
     ["included", "Sudah termasuk / tidak ada", 0],
-    ["standard", "Domain + hosting standard", 350000],
+    ["standard", "Domain umum (.com / .site / .me)", 150000],
+    ["indonesia", "Domain Indonesia (.id / .or.id / .sch.id)", 300000],
+    ["special", "Ekstensi khusus / premium", 500000]
+  ],
+  hosting: [
+    ["included", "Sudah termasuk / tidak ada", 0],
+    ["standard", "Managed hosting standard", 200000],
     ["business", "Business hosting", 750000],
     ["vps", "VPS / dedicated setup", 1500000]
   ],
@@ -82,7 +88,14 @@ function SelectField({ label, hint, value, onChange, children }) {
 }
 
 function MoneyInput({ label, value, onChange, hint }) {
-  return <label className="select-field"><span>{label}</span><div className="money-input"><b>Rp</b><input type="number" min="0" step="50000" value={value} onChange={e => onChange(Math.max(0, Number(e.target.value)))} /></div>{hint && <small>{hint}</small>}</label>;
+  const [draft, setDraft] = useState(value ? String(value) : "");
+  useEffect(() => { setDraft(value ? String(value) : ""); }, [value]);
+  const commit = () => {
+    const nextValue = Math.max(0, Number(draft) || 0);
+    setDraft(nextValue ? String(nextValue) : "");
+    onChange(nextValue);
+  };
+  return <label className="select-field"><span>{label}</span><div className="money-input"><b>Rp</b><input type="text" inputMode="numeric" placeholder="0" value={draft} onFocus={e => e.target.select()} onChange={e => setDraft(e.target.value.replace(/\D/g, ""))} onBlur={commit} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></div>{hint && <small>{hint}</small>}</label>;
 }
 
 function SplitTable({ rows, pool, color, company = false }) {
@@ -107,8 +120,10 @@ function App() {
   const [moduleDraft, setModuleDraft] = useState("");
   const [rounding, setRounding] = useSavedState("calc-rounding", "exact");
   const [discountRate, setDiscountRate] = useSavedState("calc-discount", 0);
-  const [manualAdjustment, setManualAdjustment] = useSavedState("calc-adjustment", 0);
-  const [infrastructure, setInfrastructure] = useSavedState("calc-infra", "standard");
+  const [scopeAdjustment, setScopeAdjustment] = useSavedState("calc-scope-adjustment", 0);
+  const [manualDiscount, setManualDiscount] = useSavedState("calc-manual-discount", 0);
+  const [domain, setDomain] = useSavedState("calc-domain", "standard");
+  const [hosting, setHosting] = useSavedState("calc-hosting", "standard");
   const [tools, setTools] = useSavedState("calc-tools", "none");
   const [marketingCostRate, setMarketingCostRate] = useSavedState("calc-marketing-cost", 0);
   const [overheadRate, setOverheadRate] = useSavedState("calc-overhead", 0.05);
@@ -149,15 +164,18 @@ function App() {
   const roundedScopePrice = scopeSubtotal <= 0 ? 0 : !hasScopePriceChange || rounding === "exact" ? scopeSubtotal
     : rounding === "50k" ? Math.ceil(scopeSubtotal / 50000) * 50000
     : Math.max(99000, Math.round(scopeSubtotal / 500000) * 500000 - 1000);
-  const adjustedPrice = Math.max(0, roundedScopePrice + manualAdjustment);
-  const discount = Math.round(adjustedPrice * Number(discountRate));
+  const adjustedPrice = Math.max(0, roundedScopePrice + scopeAdjustment);
+  const percentageDiscount = Math.round(adjustedPrice * Number(discountRate));
+  const appliedManualDiscount = Math.min(manualDiscount, Math.max(0, adjustedPrice - percentageDiscount));
+  const discount = Math.min(adjustedPrice, percentageDiscount + appliedManualDiscount);
   const sellingPrice = Math.max(0, adjustedPrice - discount);
 
-  const infrastructureCost = fixedCostOptions.infrastructure.find(item => item[0] === infrastructure)?.[2] || 0;
+  const domainCost = fixedCostOptions.domain.find(item => item[0] === domain)?.[2] || 0;
+  const hostingCost = fixedCostOptions.hosting.find(item => item[0] === hosting)?.[2] || 0;
   const toolsCost = fixedCostOptions.tools.find(item => item[0] === tools)?.[2] || 0;
   const marketingCost = Math.round(sellingPrice * Number(marketingCostRate));
   const overheadCost = Math.round(sellingPrice * Number(overheadRate));
-  const directCosts = infrastructureCost + toolsCost + marketingCost + overheadCost + otherCost;
+  const directCosts = domainCost + hostingCost + toolsCost + marketingCost + overheadCost + otherCost;
   const netRevenue = sellingPrice - directCosts;
   const distributableRevenue = Math.max(0, netRevenue);
   const margin = sellingPrice ? (netRevenue / sellingPrice) * 100 : directCosts ? -100 : 0;
@@ -172,8 +190,8 @@ function App() {
 
   const reset = () => {
     setSegment("umkm"); setPackageId("operational-standard"); setComplexityId("standard");
-    setSelectedModules([]); setRounding("exact"); setDiscountRate(0); setManualAdjustment(0);
-    setInfrastructure("standard"); setTools("none"); setMarketingCostRate(0); setOverheadRate(0.05); setOtherCost(0);
+    setSelectedModules([]); setRounding("exact"); setDiscountRate(0); setManualDiscount(0); setScopeAdjustment(0);
+    setDomain("standard"); setHosting("standard"); setTools("none"); setMarketingCostRate(0); setOverheadRate(0.05); setOtherCost(0);
   };
 
   const copySummary = async () => {
@@ -201,7 +219,7 @@ function App() {
           <div className="segment-tabs">{segments.map(item => <button key={item.id} className={segment === item.id ? "active" : ""} onClick={() => setSegment(item.id)}><span>{item.short}</span><small>{item.label}</small></button>)}</div>
 
           <div className="field-grid">
-            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={base.custom ? "Custom quotation — isi Adjustment manual untuk membuat estimasi" : base.maxPrice ? `Range ${packagePriceLabel(base)} · kalkulator memakai batas bawah` : `${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
+            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={base.custom ? "Custom quotation — isi Tambahan scope manual sebagai estimasi awal" : base.maxPrice ? `Range ${packagePriceLabel(base)} · kalkulator memakai batas bawah` : `${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
               {packageGroups.map(group => <optgroup label={group} key={group}>{segmentPackages.filter(item => item.solution === group).map(item => <option value={item.id} key={item.id}>{item.name} — {packagePriceLabel(item)}</option>)}</optgroup>)}
             </SelectField>
             <SelectField label="Perkiraan kompleksitas" value={complexityId} onChange={e => setComplexityId(e.target.value)} hint={complexity.note}>
@@ -209,7 +227,7 @@ function App() {
             </SelectField>
           </div>
 
-          {base.custom && <div className="custom-quote-notice"><Sparkles size={17}/><div><strong>Custom Quotation</strong><p>Paket ini tidak punya harga otomatis. Masukkan estimasi awal pada Adjustment manual, lalu tambahkan fitur dan biaya sesuai hasil scoping.</p></div></div>}
+          {base.custom && <div className="custom-quote-notice"><Sparkles size={17}/><div><strong>Custom Quotation</strong><p>Paket ini tidak punya harga otomatis. Masukkan estimasi awal pada Tambahan scope manual, lalu tambahkan fitur dan biaya sesuai hasil scoping.</p></div></div>}
 
           <div className="addon-builder">
             <div className="addon-title"><label className="section-label">Add-on project</label><span>{base.solution} · {availableModules.length} pilihan relevan</span></div>
@@ -225,27 +243,30 @@ function App() {
             <SelectField label="Diskon" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))}>
               <option value={0}>Tanpa diskon</option><option value={0.05}>Diskon 5%</option><option value={0.1}>Diskon 10%</option><option value={0.15}>Diskon 15%</option>
             </SelectField>
+            <MoneyInput label="Diskon nominal" value={manualDiscount} onChange={setManualDiscount} hint="Potongan setelah diskon persen · Enter/klik luar untuk terapkan"/>
             <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)} hint="Harga paket tetap exact jika belum ada tambahan scope">
               <option value="exact">Harga sesuai kalkulasi</option><option value="50k">Bulat ke atas 50 ribu</option><option value="charm">Charm price x.999</option>
             </SelectField>
-            <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Selalu ditambahkan setelah pembulatan harga"/>
+            <MoneyInput label="Tambahan scope manual" value={scopeAdjustment} onChange={setScopeAdjustment} hint="Request di luar add-on · Enter/klik luar untuk terapkan"/>
           </div>
 
-          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Plus size={14}/><span>Adjustment <b>{rupiah(manualAdjustment)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
+          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Plus size={14}/><span>Scope manual <b>{rupiah(scopeAdjustment)}</b></span><Minus size={14}/><span>Diskon % <b>{rupiah(percentageDiscount)}</b></span><Minus size={14}/><span>Diskon nominal <b>{rupiah(appliedManualDiscount)}</b></span></div>
         </article>
 
         <article className="calc-card cost-card">
           <div className="card-heading"><span>02</span><div><p>PROJECT COST</p><h2>Perkirakan biaya langsung</h2></div><ReceiptText size={21}/></div>
           <div className="cost-note"><ShieldCheck size={17}/><p>Biaya ini dikurangi dari harga project terlebih dahulu. Pembagian 40/30/30 dihitung dari <strong>revenue bersih</strong>.</p></div>
           <div className="field-grid">
-            <SelectField label="Domain & infrastructure" value={infrastructure} onChange={e => setInfrastructure(e.target.value)}>{fixedCostOptions.infrastructure.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Biaya domain" value={domain} onChange={e => setDomain(e.target.value)}>{fixedCostOptions.domain.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Biaya hosting / server" value={hosting} onChange={e => setHosting(e.target.value)}>{fixedCostOptions.hosting.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
             <SelectField label="Tools / API / software" value={tools} onChange={e => setTools(e.target.value)}>{fixedCostOptions.tools.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
             <SelectField label="Marketing / acquisition" value={marketingCostRate} onChange={e => setMarketingCostRate(Number(e.target.value))}>{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
             <SelectField label="Overhead project" value={overheadRate} onChange={e => setOverheadRate(Number(e.target.value))} hint="Transport, meeting, listrik, dan kebutuhan kecil">{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
             <MoneyInput label="Biaya lain-lain" value={otherCost} onChange={setOtherCost} hint="Outsource, aset, atau kebutuhan khusus"/>
           </div>
           <div className="cost-breakdown">
-            <div><Server size={15}/><span>Infrastructure</span><b>{rupiah(infrastructureCost)}</b></div>
+            <div><Globe2 size={15}/><span>Domain</span><b>{rupiah(domainCost)}</b></div>
+            <div><HardDrive size={15}/><span>Hosting / server</span><b>{rupiah(hostingCost)}</b></div>
             <div><WalletCards size={15}/><span>Tools / API</span><b>{rupiah(toolsCost)}</b></div>
             <div><Megaphone size={15}/><span>Marketing</span><b>{rupiah(marketingCost)}</b></div>
             <div><ReceiptText size={15}/><span>Overhead + lainnya</span><b>{rupiah(overheadCost + otherCost)}</b></div>
@@ -256,7 +277,7 @@ function App() {
       <aside className="result-column">
         <article className="result-card">
           <div className="result-label"><span>LIVE RESULT</span><CircleDollarSign size={19}/></div>
-          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}{discount > 0 ? ` · diskon ${Math.round(Number(discountRate) * 100)}% (-${rupiah(discount)})` : ""}</small></div>
+          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}{discount > 0 ? ` · total diskon -${rupiah(discount)}` : ""}</small></div>
           <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className={netRevenue < 0 ? "net loss" : "net"}><span>{netRevenue < 0 ? "Proyeksi rugi" : "Revenue bersih"}</span><b>{rupiah(netRevenue)}</b></div></div>
           <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{netRevenue < 0 ? "Biaya melebihi harga project" : margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
           <div className="pool-preview"><div><i style={{ width: "40%" }}/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div><i style={{ width: "30%" }}/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div><i style={{ width: "30%" }}/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>

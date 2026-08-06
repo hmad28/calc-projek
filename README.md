@@ -28,10 +28,12 @@ Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung proje
 - Add-on picker yang difilter otomatis berdasarkan jenis paket.
 - Dependency otomatis dan pencegahan double charge untuk fitur included.
 - Harga paket tetap exact saat belum ada tambahan scope; pembulatan hanya diterapkan pada add-on atau kompleksitas.
-- Adjustment manual selalu ditambahkan setelah pembulatan sehingga nominalnya tidak pernah tertelan oleh charm pricing.
-- Diskon diterapkan ke harga hasil kalkulasi sehingga langsung memengaruhi harga final.
+- Tambahan scope manual untuk request berbayar yang belum tersedia sebagai add-on.
+- Input nominal diterapkan setelah selesai diketik agar harga tidak meloncat pada setiap digit.
+- Diskon persen dan diskon nominal yang sama-sama langsung memengaruhi harga final.
 - Estimasi biaya:
-  - domain dan infrastructure;
+  - domain;
+  - hosting atau server;
   - tools, API, dan software;
   - marketing atau acquisition;
   - overhead project;
