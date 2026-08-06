@@ -144,13 +144,14 @@ function App() {
   const chargeableItems = selectedItems.filter(item => !base.features.includes(item.id));
   const addonTotal = chargeableItems.reduce((sum, item) => sum + item.price, 0);
   const complexityCost = Math.round((base.price + addonTotal) * complexity.rate);
-  const subtotal = Math.max(0, base.price + addonTotal + complexityCost + manualAdjustment);
-  const hasScopePriceChange = addonTotal !== 0 || complexityCost !== 0 || manualAdjustment !== 0;
-  const roundedPrice = subtotal <= 0 ? 0 : !hasScopePriceChange || rounding === "exact" ? subtotal
-    : rounding === "50k" ? Math.ceil(subtotal / 50000) * 50000
-    : Math.max(99000, Math.round(subtotal / 500000) * 500000 - 1000);
-  const discount = Math.round(roundedPrice * Number(discountRate));
-  const sellingPrice = Math.max(0, roundedPrice - discount);
+  const scopeSubtotal = Math.max(0, base.price + addonTotal + complexityCost);
+  const hasScopePriceChange = addonTotal !== 0 || complexityCost !== 0;
+  const roundedScopePrice = scopeSubtotal <= 0 ? 0 : !hasScopePriceChange || rounding === "exact" ? scopeSubtotal
+    : rounding === "50k" ? Math.ceil(scopeSubtotal / 50000) * 50000
+    : Math.max(99000, Math.round(scopeSubtotal / 500000) * 500000 - 1000);
+  const adjustedPrice = Math.max(0, roundedScopePrice + manualAdjustment);
+  const discount = Math.round(adjustedPrice * Number(discountRate));
+  const sellingPrice = Math.max(0, adjustedPrice - discount);
 
   const infrastructureCost = fixedCostOptions.infrastructure.find(item => item[0] === infrastructure)?.[2] || 0;
   const toolsCost = fixedCostOptions.tools.find(item => item[0] === tools)?.[2] || 0;
@@ -227,10 +228,10 @@ function App() {
             <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)} hint="Harga paket tetap exact jika belum ada tambahan scope">
               <option value="exact">Harga sesuai kalkulasi</option><option value="50k">Bulat ke atas 50 ribu</option><option value="charm">Charm price x.999</option>
             </SelectField>
-            <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Tambahan effort atau custom request"/>
+            <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Selalu ditambahkan setelah pembulatan harga"/>
           </div>
 
-          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
+          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Plus size={14}/><span>Adjustment <b>{rupiah(manualAdjustment)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
         </article>
 
         <article className="calc-card cost-card">

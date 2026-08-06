@@ -27,7 +27,8 @@ Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung proje
 - Estimasi kompleksitas Standard, Moderate, Complex, atau Advanced.
 - Add-on picker yang difilter otomatis berdasarkan jenis paket.
 - Dependency otomatis dan pencegahan double charge untuk fitur included.
-- Harga paket tetap exact saat belum ada tambahan scope; pembulatan hanya diterapkan setelah add-on, kompleksitas, atau adjustment manual mengubah nominal.
+- Harga paket tetap exact saat belum ada tambahan scope; pembulatan hanya diterapkan pada add-on atau kompleksitas.
+- Adjustment manual selalu ditambahkan setelah pembulatan sehingga nominalnya tidak pernah tertelan oleh charm pricing.
 - Diskon diterapkan ke harga hasil kalkulasi sehingga langsung memengaruhi harga final.
 - Estimasi biaya:
   - domain dan infrastructure;
