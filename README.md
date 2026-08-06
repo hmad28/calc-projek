@@ -1,53 +1,73 @@
-# Solivate Pricing & Quotation Engine
+# Solivate Project Profit Calculator
 
-Dashboard kalkulasi harga dan pembuatan quotation untuk tim sales Solivate Studio. Aplikasi ini mengubah kebutuhan customer menjadi rekomendasi paket, modul, tingkat kompleksitas, dan harga jual yang konsisten berdasarkan **Solivate Studio Pricing Architecture 2026**.
+Kalkulator internal satu layar untuk memperkirakan harga project, biaya langsung, revenue bersih, margin, dan pembagian hasil usaha tim Solivate Studio.
 
-Calculator ini bukan sekadar penjumlahan checkbox. Pricing engine menangani base package, fitur included, dependency antarmodul, complexity score, bundle recommendation, floor price, diskon, biaya pihak ketiga, dan quotation siap cetak.
+Pilih kategori, paket, kompleksitas, add-on, dan estimasi biaya melalui dropdown. Seluruh hasil diperbarui secara realtime tanpa perlu mengisi data customer atau melewati quotation wizard.
 
-## Fitur utama
-
-- Alur quotation dalam lima tahap: **Customer → Solution → Features → Recommendation → Quotation**.
-- Tiga segmentasi utama:
-  - Personal / Non-Profit
-  - UMKM / Event / Operational
-  - Business / Enterprise
-- Base package wajib untuk setiap perhitungan.
-- Dependency otomatis, misalnya QR Attendance menambahkan database, absensi, QR generator, dan QR scanner yang diperlukan.
-- Deteksi fitur yang sudah termasuk paket untuk mencegah double charge.
-- Complexity score berdasarkan paket, modul, jumlah role, volume user, dan jumlah cabang.
-- Smart bundle recommendation saat susunan modular lebih cocok dipindahkan ke paket lain.
-- Kalkulasi harga realtime dengan charm-price adjustment.
-- Manual discount dan peringatan ketika harga berada di bawah floor price.
-- Pemisahan development fee dan biaya provider pihak ketiga.
-- Mode **Internal Pricing** dan **Customer Preview**.
-- AI requirement mapper menggunakan Gemini API.
-- Penyimpanan draft dan beberapa scenario penawaran.
-- Quotation A4 yang dapat dicetak atau disimpan sebagai PDF dari browser.
-- Layout responsif untuk desktop, tablet, dan mobile.
-
-## Cara kerja pricing engine
+## Perhitungan utama
 
 ```text
-Customer Profile
-      ↓
-Customer Segment & Solution Type
-      ↓
-Base Package
-      ↓
-Feature Modules
-      ↓
-Dependency & Included Feature Check
-      ↓
-Complexity & Volume Evaluation
-      ↓
-Bundle / Package Recommendation
-      ↓
-Discount & Floor Price Validation
-      ↓
-Final Price & Quotation
+Base Package + Add-on + Complexity + Adjustment - Discount
+                              ↓
+                       Harga Project
+                              ↓
+Harga Project - Biaya Langsung Project = Revenue Bersih
+                              ↓
+        Developer 40% + Marketing 30% + Kas 30%
 ```
 
-AI hanya membantu memetakan deskripsi kebutuhan ke package dan module ID yang tersedia. Semua nominal, dependency, included feature, complexity point, dan floor-price validation tetap dihitung secara deterministik oleh pricing engine di aplikasi.
+Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung project dikurangi**.
+
+## Fitur
+
+- Pilihan tiga kategori pricing Solivate Studio.
+- Dropdown paket dasar berdasarkan kategori.
+- Estimasi kompleksitas Standard, Moderate, Complex, atau Advanced.
+- Add-on picker dengan harga realtime.
+- Dependency otomatis dan pencegahan double charge untuk fitur included.
+- Diskon, adjustment manual, dan pilihan pembulatan harga.
+- Estimasi biaya:
+  - domain dan infrastructure;
+  - tools, API, dan software;
+  - marketing atau acquisition;
+  - overhead project;
+  - biaya lain-lain.
+- Revenue bersih dan indikator net margin.
+- Pembagian otomatis berdasarkan Pasal 3.
+- Copy ringkasan perhitungan.
+- Tampilan print-friendly.
+- Penyimpanan pilihan otomatis di browser.
+- Responsive untuk desktop dan mobile.
+
+## Pembagian hasil usaha
+
+### Developer Pool — 40%
+
+| Role | % Developer Pool | % Revenue Bersih |
+| --- | ---: | ---: |
+| Tech Lead | 35% | 14% |
+| Backend Developer | 30% | 12% |
+| Frontend Developer | 25% | 10% |
+| DevOps Engineer | 10% | 4% |
+
+### Marketing Pool — 30%
+
+| Role | % Marketing Pool | % Revenue Bersih |
+| --- | ---: | ---: |
+| Marketing Lead | 50% | 15% |
+| Content Lead | 30% | 9% |
+| Content Creator | 20% | 6% |
+
+### Kas Perusahaan — 30%
+
+| Alokasi | % Kas Pool | % Revenue Bersih |
+| --- | ---: | ---: |
+| Operasional | 35% | 10.5% |
+| Cadangan | 40% | 12% |
+| Growth Fund | 20% | 6% |
+| Misc / Bonus Pool | 5% | 1.5% |
+
+Alokasi Operasional pada Kas Perusahaan berbeda dari biaya langsung project. Biaya langsung dikurangi sebelum pembagian, sedangkan alokasi Operasional adalah bagian kas untuk kebutuhan perusahaan setelah revenue bersih tersedia.
 
 ## Tech stack
 
@@ -55,142 +75,80 @@ AI hanya membantu memetakan deskripsi kebutuhan ke package dan module ID yang te
 - Vite
 - Lucide React
 - CSS responsif tanpa UI framework
-- Vercel Functions
-- Gemini Generate Content API
-- Browser `localStorage` untuk draft dan saved scenario
+- Browser `localStorage`
+- Vercel-compatible static build
+
+Repository masih menyertakan endpoint Gemini di `api/ai.js` sebagai fondasi integrasi AI. Calculator utama tidak bergantung pada AI dan tetap berfungsi penuh tanpa API key.
 
 ## Struktur repository
 
 ```text
 calc-projek/
 ├── api/
-│   └── ai.js             # Serverless endpoint untuk Gemini
+│   └── ai.js
 ├── public/
 │   ├── favicon.ico
 │   └── solivate-logo.webp
 ├── src/
-│   ├── data.js           # Package, module, dependency, dan pricing defaults
-│   ├── main.jsx          # Calculator flow dan pricing engine UI
-│   └── styles.css        # Solivate dashboard design system
-├── .env.example
+│   ├── data.js       # Package, module, harga, dan dependency defaults
+│   ├── main.jsx      # Kalkulasi harga, biaya, profit, dan pembagian
+│   └── styles.css    # Solivate dashboard design system
 ├── index.html
 ├── package.json
 ├── vercel.json
 └── vite.config.js
 ```
 
-## Prasyarat
-
-- Node.js dan npm
-- Gemini API key untuk fitur AI
-- Vercel CLI jika ingin menjalankan frontend dan serverless function sekaligus secara lokal
-
-## Instalasi
+## Menjalankan secara lokal
 
 ```bash
 git clone https://github.com/hmad28/calc-projek.git
 cd calc-projek
 npm install
-```
-
-Salin konfigurasi environment:
-
-```bash
-copy .env.example .env.local
-```
-
-Kemudian isi nilai berikut:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.6-flash
-```
-
-> Jangan menambahkan prefix `VITE_` pada API key. Variable dengan prefix tersebut akan disertakan ke browser bundle dan dapat mengekspos credential.
-
-## Menjalankan aplikasi
-
-Frontend saja dengan Vite:
-
-```bash
 npm run dev
 ```
 
-Mode ini cukup untuk menguji calculator, dependency engine, scenario, dan quotation. Endpoint AI membutuhkan Vercel Functions.
-
-Untuk menjalankan frontend dan endpoint AI secara lokal:
-
-```bash
-npx vercel dev
-```
+Vite akan menampilkan alamat local development server di terminal.
 
 ## Scripts
 
 | Command | Kegunaan |
 | --- | --- |
-| `npm run dev` | Menjalankan Vite development server |
+| `npm run dev` | Menjalankan development server |
 | `npm run build` | Membuat production build di `dist/` |
-| `npm run preview` | Menjalankan preview dari production build |
-
-## Konfigurasi Gemini
-
-Request AI dikirim melalui `/api/ai`, sehingga API key hanya dibaca di server. Endpoint tersebut:
-
-1. menerima deskripsi kebutuhan dan pilihan package/module yang valid;
-2. mengirim prompt terstruktur ke Gemini;
-3. meminta respons JSON;
-4. mengembalikan rekomendasi package, module, reasoning, dan alert;
-5. menyerahkan kalkulasi harga akhir kepada pricing engine lokal.
-
-Jika `GEMINI_API_KEY` belum tersedia, calculator tetap dapat digunakan secara manual dan hanya fitur AI Assist yang tidak aktif.
+| `npm run preview` | Menjalankan preview production build |
 
 ## Deploy ke Vercel
 
-Repository sudah menyertakan `vercel.json` dengan build command dan output directory yang dibutuhkan.
+1. Import repository ke Vercel.
+2. Gunakan framework preset **Vite**.
+3. Jalankan deployment.
 
-1. Import repository ini ke Vercel.
-2. Pilih framework preset **Vite**.
-3. Buka **Project Settings → Environment Variables**.
-4. Tambahkan:
+Konfigurasi build sudah tersedia di `vercel.json`:
 
-   ```text
-   GEMINI_API_KEY
-   GEMINI_MODEL
-   ```
+```json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}
+```
 
-5. Deploy project.
+Jika endpoint AI akan digunakan, tambahkan `GEMINI_API_KEY` dan `GEMINI_MODEL` melalui Vercel Environment Variables. Jangan menggunakan prefix `VITE_` untuk API key.
 
-Vercel akan menyajikan frontend statis dari `dist/` dan menjalankan `api/ai.js` sebagai serverless function.
+## Data dan privasi
 
-## Data dan persistence
+Pilihan calculator disimpan di `localStorage` perangkat. Tidak ada nama customer, nama sales, atau data personal yang diperlukan.
 
-Versi saat ini menyimpan draft customer, pilihan fitur, dan saved scenario di `localStorage`. Konsekuensinya:
+- Data tidak tersinkron antar-device.
+- Membersihkan browser storage akan mereset calculator.
+- File `.env` dan `.env.local` tidak boleh di-commit.
 
-- data tetap tersedia setelah browser direfresh;
-- tidak diperlukan database untuk penggunaan single-device;
-- data belum tersinkron antar-user atau antar-device;
-- menghapus browser storage akan menghapus draft dan scenario lokal.
-
-Untuk penggunaan tim, entity package, module, rule, customer, dan quotation dapat dipindahkan ke database terpusat. Struktur pricing defaults sudah dipisahkan di `src/data.js` agar migrasi tersebut tidak memerlukan redesign UI.
-
-## Security notes
-
-- Jangan commit `.env` atau `.env.local`.
-- Simpan Gemini API key sebagai Vercel Environment Variable.
-- Rotasi key jika pernah dibagikan melalui chat, screenshot, atau repository.
-- Customer tidak pernah menerima floor price dan breakdown internal ketika menggunakan Customer Preview.
-- Provider fee, MDR, subscription, dan biaya eksternal harus tetap dicantumkan terpisah pada quotation.
-
-## Validasi production build
-
-Jalankan sebelum deploy:
+## Validasi sebelum deploy
 
 ```bash
 npm run build
 ```
 
-Production output akan dibuat di folder `dist/`.
-
 ---
 
-Built for **Solivate Studio** — custom digital solutions that stay accessible without sacrificing scope discipline.
+Built for **Solivate Studio** — estimate clearly, protect the margin, and distribute fairly.

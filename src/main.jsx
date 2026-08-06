@@ -1,30 +1,55 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowLeft, ArrowRight, BarChart3, Bot, Building2, Check, CheckCircle2,
-  ChevronRight, CircleDollarSign, ClipboardList, FileDown, HeartHandshake,
-  Info, LayoutDashboard, Loader2, Menu, PackageCheck, Plus, RotateCcw,
-  Save, Sparkles, Store, Users, WandSparkles, X, Zap
+  ArrowDown, Calculator, Check, ChevronDown, CircleDollarSign, Code2,
+  Copy, Landmark, Megaphone, Minus, Plus, Printer, ReceiptText,
+  RefreshCcw, Server, ShieldCheck, Sparkles, Trash2, TrendingUp,
+  WalletCards
 } from "lucide-react";
-import { complexityLabel, industries, modules, packages, rupiah, segments, solutions } from "./data";
+import { modules, packages, rupiah, segments } from "./data";
 import "./styles.css";
 
-const iconMap = { HeartHandshake, Store, Building2 };
-const steps = [
-  ["Customer", "Siapa client-nya?", Users],
-  ["Solution", "Mau dibangun apa?", LayoutDashboard],
-  ["Features", "Pilih requirement", ClipboardList],
-  ["Recommendation", "Review hasil engine", Sparkles],
-  ["Quotation", "Finalisasi penawaran", FileDown]
+const complexityOptions = [
+  { id: "standard", label: "Standard", note: "Scope jelas, flow umum", rate: 0 },
+  { id: "moderate", label: "Moderate", note: "Ada custom flow ringan", rate: 0.1 },
+  { id: "complex", label: "Complex", note: "Banyak logic dan role", rate: 0.2 },
+  { id: "advanced", label: "Advanced", note: "Integrasi / workflow berat", rate: 0.35 }
 ];
 
-const initialProfile = {
-  customerName: "", projectName: "", customerType: "Sekolah", segment: "umkm",
-  industry: "Education", solution: "Operational", salesperson: "", budget: "Rp3–5 juta",
-  targetLaunch: "", notes: "", expectedUsers: "100–500", roles: 2, branches: 1
+const fixedCostOptions = {
+  infrastructure: [
+    ["included", "Sudah termasuk / tidak ada", 0],
+    ["standard", "Domain + hosting standard", 350000],
+    ["business", "Business hosting", 750000],
+    ["vps", "VPS / dedicated setup", 1500000]
+  ],
+  tools: [
+    ["none", "Tidak ada biaya tools", 0],
+    ["light", "Tools / API ringan", 250000],
+    ["standard", "Tools / API standard", 500000],
+    ["heavy", "Tools / API intensif", 1000000]
+  ]
 };
 
-function useStoredState(key, initial) {
+const percentOptions = [
+  [0, "Tidak ada"], [0.05, "5% dari harga project"], [0.1, "10% dari harga project"], [0.15, "15% dari harga project"]
+];
+
+const developerSplit = [
+  ["Tech Lead", 0.35, 0.14], ["Backend Developer", 0.3, 0.12],
+  ["Frontend Developer", 0.25, 0.1], ["DevOps Engineer", 0.1, 0.04]
+];
+const marketingSplit = [
+  ["Marketing Lead", 0.5, 0.15], ["Content Lead", 0.3, 0.09], ["Content Creator", 0.2, 0.06]
+];
+const companySplit = [
+  ["Operasional", 0.35, 0.105, "Server, tools, software, kantor"],
+  ["Cadangan", 0.4, 0.12, "Emergency fund 3–6 bulan"],
+  ["Growth Fund", 0.2, 0.06, "Reinvestasi, R&D, produk baru"],
+  ["Misc / Bonus Pool", 0.05, 0.015, "Bonus performa dan team event"]
+];
+
+function useSavedState(key, initial) {
   const [value, setValue] = useState(() => {
     try { return JSON.parse(localStorage.getItem(key)) ?? initial; } catch { return initial; }
   });
@@ -32,216 +57,191 @@ function useStoredState(key, initial) {
   return [value, setValue];
 }
 
-function Field({ label, hint, children, wide = false }) {
-  return <label className={wide ? "field wide" : "field"}><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>;
+function SelectField({ label, hint, value, onChange, children }) {
+  return <label className="select-field"><span>{label}</span><div className="select-wrap"><select value={value} onChange={onChange}>{children}</select><ChevronDown size={15}/></div>{hint && <small>{hint}</small>}</label>;
 }
 
-function App() {
-  const [step, setStep] = useState(0);
-  const [profile, setProfile] = useStoredState("solivate-draft-profile", initialProfile);
-  const [baseId, setBaseId] = useStoredState("solivate-draft-base", "operational-pro");
-  const [selected, setSelected] = useStoredState("solivate-draft-features", []);
-  const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState("fixed");
-  const [mode, setMode] = useState("internal");
-  const [mobileNav, setMobileNav] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiInput, setAiInput] = useState("");
-  const [aiResult, setAiResult] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [scenarios, setScenarios] = useStoredState("solivate-scenarios", []);
+function MoneyInput({ label, value, onChange, hint }) {
+  return <label className="select-field"><span>{label}</span><div className="money-input"><b>Rp</b><input type="number" min="0" step="50000" value={value} onChange={e => onChange(Math.max(0, Number(e.target.value)))} /></div>{hint && <small>{hint}</small>}</label>;
+}
 
-  const availablePackages = useMemo(() => packages.filter(p => p.segment === profile.segment), [profile.segment]);
-  const solutionPackages = useMemo(() => {
-    const exact = availablePackages.filter(p => p.solution === profile.solution);
-    return exact.length ? exact : availablePackages;
-  }, [availablePackages, profile.solution]);
-
-  useEffect(() => {
-    if (!solutionPackages.some(p => p.id === baseId)) setBaseId(solutionPackages[0]?.id || availablePackages[0]?.id || "");
-  }, [profile.segment, profile.solution]);
-
-  const base = packages.find(p => p.id === baseId) || solutionPackages[0] || packages[0];
-  const selectedSet = useMemo(() => new Set(selected), [selected]);
-
-  const dependencyIds = useMemo(() => {
-    const found = new Set();
-    const walk = (id) => {
-      const item = modules.find(m => m.id === id);
-      item?.requires?.forEach(dep => { if (!selectedSet.has(dep) && !found.has(dep)) { found.add(dep); walk(dep); } });
-    };
-    selected.forEach(walk);
-    return [...found];
-  }, [selected]);
-
-  const effectiveIds = useMemo(() => [...new Set([...selected, ...dependencyIds])], [selected, dependencyIds]);
-  const effectiveModules = effectiveIds.map(id => modules.find(m => m.id === id)).filter(Boolean);
-  const chargeableModules = effectiveModules.filter(m => !base.features.includes(m.id));
-  const includedSelected = effectiveModules.filter(m => base.features.includes(m.id));
-  const addonTotal = chargeableModules.reduce((sum, m) => sum + m.price, 0);
-  const rolePoints = profile.roles >= 7 ? 8 : profile.roles >= 4 ? 5 : 0;
-  const volumePoints = profile.expectedUsers === "10.000+" ? 8 : profile.expectedUsers === "2.000–10.000" ? 5 : profile.expectedUsers === "500–2.000" ? 3 : 0;
-  const branchPoints = profile.branches >= 5 ? 5 : profile.branches > 1 ? 3 : 0;
-  const complexity = base.complexity + chargeableModules.reduce((sum, m) => sum + m.points, 0) + rolePoints + volumePoints + branchPoints;
-  const rawTotal = base.price + addonTotal;
-  const recommended = addonTotal ? Math.max(base.floor, Math.max(base.price, Math.round(rawTotal / 500000) * 500000 - 1000)) : base.price;
-  const discountValue = discountType === "percent" ? Math.round(recommended * Math.min(discount, 100) / 100) : Math.min(discount, recommended);
-  const finalPrice = Math.max(0, recommended - discountValue);
-  const floorStatus = finalPrice < base.floor ? "danger" : finalPrice < base.price ? "warning" : "safe";
-
-  const bundle = useMemo(() => {
-    const candidates = packages.filter(p => p.segment === profile.segment && p.price < rawTotal && p.price > base.price);
-    return candidates.map(p => ({ p, coverage: effectiveIds.filter(id => p.features.includes(id)).length }))
-      .filter(x => x.coverage >= Math.max(2, Math.ceil(effectiveIds.length * .45)))
-      .sort((a, b) => b.coverage - a.coverage || a.p.price - b.p.price)[0]?.p;
-  }, [base, effectiveIds, profile.segment, rawTotal]);
-
-  const groups = [...new Set(modules.map(m => m.group))];
-  const update = (key, value) => setProfile(prev => ({ ...prev, [key]: value }));
-  const toggleFeature = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const canContinue = step !== 0 || (profile.customerName.trim() && profile.projectName.trim());
-
-  const reset = () => {
-    setProfile(initialProfile); setBaseId("operational-pro"); setSelected([]); setDiscount(0); setStep(0);
-  };
-
-  const saveScenario = () => {
-    const next = {
-      id: crypto.randomUUID(), name: `Scenario ${String.fromCharCode(65 + scenarios.length)}`,
-      project: profile.projectName || "Untitled Project", baseId, selected, total: finalPrice, createdAt: new Date().toISOString()
-    };
-    setScenarios(prev => [...prev, next]);
-  };
-
-  const runAi = async () => {
-    if (!aiInput.trim()) return;
-    setAiLoading(true); setAiResult(null);
-    try {
-      const response = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        requirement: aiInput, profile, availableModuleIds: modules.map(({ id, name }) => ({ id, name })),
-        availablePackages: availablePackages.map(({ id, name, price, solution }) => ({ id, name, price, solution }))
-      }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "AI tidak merespons.");
-      setAiResult(data);
-    } catch (error) { setAiResult({ error: error.message }); }
-    finally { setAiLoading(false); }
-  };
-
-  const applyAi = () => {
-    if (!aiResult) return;
-    const valid = (aiResult.moduleIds || []).filter(id => modules.some(m => m.id === id));
-    if (valid.length) setSelected(prev => [...new Set([...prev, ...valid])]);
-    if (packages.some(p => p.id === aiResult.packageId)) setBaseId(aiResult.packageId);
-    setAiOpen(false); setStep(2);
-  };
-
-  return <div className="app-shell">
-    <aside className={mobileNav ? "sidebar open" : "sidebar"}>
-      <div className="brand"><img src="/solivate-logo.webp" alt="Solivate Studio" /><span>Pricing Engine</span></div>
-      <div className="workspace-pill"><small>SALES OPS</small><strong>Quotation Workspace</strong></div>
-      <nav>
-        {steps.map(([name, subtitle, Icon], index) => <button key={name} className={step === index ? "nav-step active" : step > index ? "nav-step done" : "nav-step"} onClick={() => { setStep(index); setMobileNav(false); }}>
-          <span className="nav-index">{step > index ? <Check size={13}/> : String(index + 1).padStart(2, "0")}</span>
-          <span><strong>{name}</strong><small>{subtitle}</small></span><ChevronRight size={14}/>
-        </button>)}
-      </nav>
-      <div className="sidebar-foot"><span><i></i> Pricing rules active</span><small>Architecture 2026 · v1.0</small></div>
-    </aside>
-
-    <main>
-      <header className="topbar">
-        <button className="menu-button" onClick={() => setMobileNav(v => !v)} aria-label="Buka menu"><Menu size={20}/></button>
-        <div><p>Sales Pricing & Quotation Engine</p><h1>{steps[step][0]}</h1></div>
-        <div className="top-actions">
-          <div className="mode-switch"><button className={mode === "internal" ? "active" : ""} onClick={() => setMode("internal")}>Internal</button><button className={mode === "customer" ? "active" : ""} onClick={() => setMode("customer")}>Customer Preview</button></div>
-          <button className="ai-button" onClick={() => setAiOpen(true)}><WandSparkles size={16}/><span>AI Assist</span></button>
-        </div>
-      </header>
-
-      <div className="page-grid">
-        <section className="workspace">
-          <div className="step-kicker"><span>STEP {step + 1} / 5</span><i style={{ width: `${(step + 1) * 20}%` }}></i></div>
-
-          {step === 0 && <div className="panel animate-in">
-            <div className="panel-head"><div><span className="eyebrow">PROJECT INFORMATION</span><h2>Mulai dari konteks,<br/>bukan sekadar checklist.</h2><p>Data ini otomatis dipakai untuk rekomendasi dan quotation.</p></div><div className="head-number">01</div></div>
-            <div className="form-grid">
-              <Field label="Nama Customer"><input value={profile.customerName} onChange={e => update("customerName", e.target.value)} placeholder="SMA Al-Falah" /></Field>
-              <Field label="Nama Project"><input value={profile.projectName} onChange={e => update("projectName", e.target.value)} placeholder="Sistem Kedisiplinan Siswa" /></Field>
-              <Field label="Customer Type"><input value={profile.customerType} onChange={e => update("customerType", e.target.value)} placeholder="Sekolah / UMKM / PT" /></Field>
-              <Field label="Industry"><select value={profile.industry} onChange={e => update("industry", e.target.value)}>{industries.map(x => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="Sales Person"><input value={profile.salesperson} onChange={e => update("salesperson", e.target.value)} placeholder="Nama sales" /></Field>
-              <Field label="Estimasi Budget"><input value={profile.budget} onChange={e => update("budget", e.target.value)} placeholder="Rp3–5 juta" /></Field>
-              <Field label="Target Launch"><input type="date" value={profile.targetLaunch} onChange={e => update("targetLaunch", e.target.value)} /></Field>
-              <Field label="Expected Users"><select value={profile.expectedUsers} onChange={e => update("expectedUsers", e.target.value)}>{["<100", "100–500", "500–2.000", "2.000–10.000", "10.000+"].map(x => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="Notes" wide><textarea value={profile.notes} onChange={e => update("notes", e.target.value)} placeholder="Ceritakan kebutuhan singkat, pain point, atau batas scope…" rows="4" /></Field>
-            </div>
-          </div>}
-
-          {step === 1 && <div className="panel animate-in">
-            <div className="panel-head compact"><div><span className="eyebrow">SOLUTION MAPPING</span><h2>Kebutuhannya masuk<br/>kelas yang mana?</h2></div><div className="head-number">02</div></div>
-            <h3 className="section-label">1. Customer segment</h3>
-            <div className="segment-grid">{segments.map(segment => { const Icon = iconMap[segment.icon]; return <button key={segment.id} className={profile.segment === segment.id ? "segment-card selected" : "segment-card"} onClick={() => update("segment", segment.id)}><Icon size={22}/><strong>{segment.label}</strong><p>{segment.description}</p><span>{profile.segment === segment.id ? <Check size={14}/> : <Plus size={14}/>}</span></button> })}</div>
-            <h3 className="section-label">2. Solution type</h3>
-            <div className="chip-grid">{solutions.map(solution => <button key={solution} className={profile.solution === solution ? "solution-chip selected" : "solution-chip"} onClick={() => update("solution", solution)}>{solution}<Check size={13}/></button>)}</div>
-            <div className="package-section"><div className="section-title"><div><h3>3. Base package</h3><p>Setiap quotation wajib punya paket dasar.</p></div><PackageCheck size={22}/></div>
-              <div className="package-grid">{solutionPackages.map(pkg => <button key={pkg.id} className={base.id === pkg.id ? "package-card selected" : "package-card"} onClick={() => setBaseId(pkg.id)}><span>{pkg.solution}</span><h4>{pkg.name}</h4><strong>{pkg.starting && <small>Mulai </small>}{rupiah(pkg.price)}</strong><p>{pkg.features.length} fitur included · {pkg.warranty} warranty</p><i>{base.id === pkg.id ? <CheckCircle2 size={19}/> : <Plus size={17}/>}</i></button>)}</div>
-            </div>
-          </div>}
-
-          {step === 2 && <div className="panel animate-in">
-            <div className="panel-head compact"><div><span className="eyebrow">REQUIREMENT SELECTOR</span><h2>Apa yang customer<br/>benar-benar butuhkan?</h2><p>Dependency dan fitur included dihitung otomatis.</p></div><button className="inline-ai" onClick={() => setAiOpen(true)}><Bot size={18}/> Jelaskan ke AI</button></div>
-            {dependencyIds.length > 0 && <div className="notice dependency"><Zap size={18}/><div><strong>{dependencyIds.length} dependency detected</strong><p>{dependencyIds.map(id => modules.find(m => m.id === id)?.name).join(", ")} otomatis ditambahkan.</p></div></div>}
-            <div className="requirement-groups">{groups.map(group => <section key={group}><div className="group-head"><h3>{group}</h3><span>{modules.filter(m => m.group === group && selectedSet.has(m.id)).length} selected</span></div><div className="feature-grid">{modules.filter(m => m.group === group).map(item => {
-              const active = selectedSet.has(item.id); const included = base.features.includes(item.id); const dependency = dependencyIds.includes(item.id);
-              return <button key={item.id} className={active || dependency ? "feature-card selected" : "feature-card"} onClick={() => !dependency && toggleFeature(item.id)}><span className="feature-check">{active || dependency ? <Check size={15}/> : null}</span><div><strong>{item.name}</strong><p>{item.description}</p><small>{included ? "INCLUDED" : dependency ? "DEPENDENCY" : mode === "internal" ? `+ ${rupiah(item.price)}` : "Optional module"}</small></div>{item.external && <Info size={14}/>}</button>
-            })}</div></section>)}</div>
-          </div>}
-
-          {step === 3 && <div className="panel animate-in recommendation-page">
-            <div className="recommend-hero"><div><span className="eyebrow">ENGINE RECOMMENDATION</span><p>{profile.projectName || "Untitled Project"}</p><h2>{complexityLabel(complexity)} solution,<br/><em>{base.name}</em></h2></div><div className="score-orbit"><strong>{complexity}</strong><span>POINTS</span></div></div>
-            {bundle && bundle.id !== base.id && <div className="bundle-callout"><div className="bundle-icon"><Sparkles size={21}/></div><div><span>SMART BUNDLE DETECTED</span><h3>{bundle.name} lebih efisien untuk scope ini.</h3><p>Harga bundle {rupiah(bundle.price)} · hemat {rupiah(rawTotal - bundle.price)} dibanding modular.</p></div><button onClick={() => setBaseId(bundle.id)}>Pakai bundle <ArrowRight size={15}/></button></div>}
-            <div className="insight-grid"><article><span>Classification</span><strong>{base.segment === "enterprise" ? "Business / Enterprise" : base.solution}</strong><p>{complexityLabel(complexity)}</p></article><article><span>Complexity</span><strong>{complexity} points</strong><p>{complexity > 50 ? "Perlu custom scoping" : "Masih dalam paket terukur"}</p></article><article><span>Infrastructure</span><strong>Managed Hosting</strong><p>{rawTotal >= 400000 ? ".com 1 tahun included" : "Subdomain included"}</p></article></div>
-            <div className="scope-table"><div className="scope-head"><h3>Scope recommendation</h3><span>{effectiveModules.length + base.features.length} items</span></div>
-              <div className="scope-row header"><span>Module</span><span>Status</span><span>{mode === "internal" ? "Value" : "Scope"}</span></div>
-              {[...new Map([...base.features.map(id => [id, { id, name: modules.find(m => m.id === id)?.name || id.replaceAll("-", " "), included: true }]), ...effectiveModules.map(m => [m.id, { ...m, included: base.features.includes(m.id) }])]).values()].map(item => <div className="scope-row" key={item.id}><span><CheckCircle2 size={15}/>{item.name}</span><span className={item.included ? "status included" : "status addon"}>{item.included ? "Included" : "Add-on"}</span><span>{mode === "internal" && !item.included ? rupiah(item.price) : "In scope"}</span></div>)}
-            </div>
-          </div>}
-
-          {step === 4 && <div className="panel animate-in quotation-wrap">
-            <div className="quotation-toolbar"><div><span className="eyebrow">FINAL QUOTATION</span><h2>Siap dikirim ke customer.</h2></div><div><button className="secondary-button" onClick={saveScenario}><Save size={16}/> Save scenario</button><button className="primary-button" onClick={() => window.print()}><FileDown size={16}/> Print / PDF</button></div></div>
-            <article className="quotation" id="quotation"><header><img src="/solivate-logo.webp" alt="Solivate Studio"/><div><span>QUOTATION</span><strong>SV-{new Date().getFullYear()}-{String(Date.now()).slice(-5)}</strong><small>{new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date())}</small></div></header>
-              <div className="quote-parties"><section><span>PREPARED FOR</span><h3>{profile.customerName || "Nama Customer"}</h3><p>{profile.customerType} · {profile.industry}</p></section><section><span>PROJECT</span><h3>{profile.projectName || "Nama Project"}</h3><p>Target launch: {profile.targetLaunch || "Menyesuaikan"}</p></section></div>
-              <div className="quote-package"><div><span>RECOMMENDED SOLUTION</span><h2>{base.name}</h2><p>{complexityLabel(complexity)} · {complexity} complexity points</p></div><strong>{rupiah(finalPrice)}</strong></div>
-              <section className="quote-scope"><h3>Scope pekerjaan</h3><div>{[...new Set([...base.features, ...effectiveIds])].map(id => <span key={id}><Check size={13}/>{modules.find(m => m.id === id)?.name || id.replaceAll("-", " ")}</span>)}</div></section>
-              <div className="quote-details"><section><h4>Infrastructure</h4><p>Managed hosting + SSL</p><p>{finalPrice >= 400000 ? ".com 1 tahun included" : "Subdomain Solivate included"}</p></section><section><h4>Warranty</h4><p>{base.warranty} bug warranty</p><p>Feature update tidak termasuk</p></section><section><h4>Third-party fee</h4><p>{effectiveModules.some(m => m.external) ? "Provider fee dibayar client" : "Tidak ada pada scope saat ini"}</p></section></div>
-              <div className="quote-total"><div><span>Investment</span><small>Development fee</small></div><strong>{rupiah(finalPrice)}</strong></div>
-              <footer><p>Harga berlaku 14 hari. Perubahan scope akan dibuatkan quotation version baru.</p><strong>Solivate Studio</strong></footer>
-            </article>
-            {scenarios.length > 0 && <section className="scenario-list"><div className="section-title"><div><h3>Saved scenarios</h3><p>Bandingkan opsi tanpa mengubah quotation utama.</p></div></div>{scenarios.map(item => <div className="scenario-row" key={item.id}><span>{item.name}</span><div><strong>{item.project}</strong><small>{new Date(item.createdAt).toLocaleString("id-ID")}</small></div><b>{rupiah(item.total)}</b><button onClick={() => setScenarios(prev => prev.filter(x => x.id !== item.id))}><X size={15}/></button></div>)}</section>}
-          </div>}
-
-          <div className="page-actions"><button className="back-button" onClick={() => step ? setStep(step - 1) : reset()}>{step ? <><ArrowLeft size={16}/> Kembali</> : <><RotateCcw size={16}/> Reset draft</>}</button>{step < 4 && <button className="primary-button" disabled={!canContinue} onClick={() => setStep(step + 1)}>Lanjut ke {steps[step + 1][0]} <ArrowRight size={16}/></button>}</div>
-        </section>
-
-        <aside className="estimate-card">
-          <div className="estimate-top"><span>LIVE ESTIMATE</span><i><CircleDollarSign size={17}/></i></div>
-          <p>{profile.projectName || "Project belum diberi nama"}</p><h2>{rupiah(finalPrice)}</h2><span className={`margin-status ${floorStatus}`}><i></i>{floorStatus === "safe" ? "Safe margin" : floorStatus === "warning" ? "Low margin" : "Manager approval required"}</span>
-          <div className="estimate-breakdown"><div><span>Base · {base.name}</span><strong>{rupiah(base.price)}</strong></div><div><span>Modules ({chargeableModules.length})</span><strong>{rupiah(addonTotal)}</strong></div><div><span>Bundle adjustment</span><strong>{rupiah(recommended - rawTotal)}</strong></div>{discountValue > 0 && <div><span>Discount</span><strong>-{rupiah(discountValue)}</strong></div>}</div>
-          {mode === "internal" && <div className="discount-box"><div><span>Manual discount</span><select value={discountType} onChange={e => setDiscountType(e.target.value)}><option value="fixed">Nominal</option><option value="percent">Percent</option></select></div><div className="discount-input"><span>{discountType === "fixed" ? "Rp" : "%"}</span><input type="number" min="0" value={discount} onChange={e => setDiscount(Number(e.target.value))}/></div><small>Floor price: {rupiah(base.floor)}</small></div>}
-          <div className="complexity-meter"><div><span>Complexity</span><strong>{complexityLabel(complexity)}</strong></div><div className="meter"><i style={{ width: `${Math.min(100, complexity / 60 * 100)}%` }}></i></div><small>{complexity} points · {profile.roles} roles · {profile.expectedUsers} users</small></div>
-          <div className="estimate-benefit"><CheckCircle2 size={16}/><div><strong>{finalPrice >= 400000 ? ".com included" : "Subdomain included"}</strong><span>Managed hosting + SSL</span></div></div>
-        </aside>
-      </div>
-    </main>
-
-    {mobileNav && <button className="mobile-backdrop" onClick={() => setMobileNav(false)} aria-label="Tutup menu"/>}
-    {aiOpen && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setAiOpen(false)}><section className="ai-modal"><header><div><span><Sparkles size={14}/> SOLIVATE AI</span><h2>Ceritakan kebutuhan client.</h2><p>AI memetakan requirement ke paket dan module yang tersedia—pricing final tetap dihitung rule engine.</p></div><button onClick={() => setAiOpen(false)}><X size={20}/></button></header>
-      <textarea rows="6" value={aiInput} onChange={e => setAiInput(e.target.value)} placeholder="Contoh: Sekolah punya 800 siswa. Butuh 5 role, absensi, pelanggaran, poin otomatis, portal wali, laporan PDF/Excel, dan opsi QR…" />
-      {aiResult && <div className={aiResult.error ? "ai-result error" : "ai-result"}>{aiResult.error ? <p>{aiResult.error}</p> : <><span>AI RECOMMENDATION</span><h3>{aiResult.summary}</h3><p>{aiResult.reasoning}</p>{aiResult.alerts?.map(alert => <small key={alert}>• {alert}</small>)}</>}</div>}
-      <footer>{aiResult && !aiResult.error && <button className="secondary-button" onClick={applyAi}><Check size={16}/> Terapkan rekomendasi</button>}<button className="primary-button" onClick={runAi} disabled={aiLoading || !aiInput.trim()}>{aiLoading ? <Loader2 className="spin" size={17}/> : <Sparkles size={17}/>} {aiLoading ? "Menganalisis…" : "Analisis requirement"}</button></footer>
-    </section></div>}
+function SplitTable({ rows, pool, color, company = false }) {
+  return <div className="split-table">
+    {rows.map(([role, poolRate, totalRate, note]) => <div className="split-row" key={role}>
+      <span className="split-dot" style={{ background: color }}/>
+      <div><strong>{role}</strong>{note && <small>{note}</small>}</div>
+      <span>{Math.round(poolRate * 100)}% pool<small>{(totalRate * 100).toFixed(totalRate * 100 % 1 ? 1 : 0)}% net</small></span>
+      <b>{rupiah(pool * poolRate)}</b>
+    </div>)}
+    <div className="split-total"><span>Total {company ? "Kas Perusahaan" : "Pool"}</span><strong>{rupiah(pool)}</strong></div>
   </div>;
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+function App() {
+  const [segment, setSegment] = useSavedState("calc-segment", "umkm");
+  const segmentPackages = useMemo(() => packages.filter(item => item.segment === segment), [segment]);
+  const [packageId, setPackageId] = useSavedState("calc-package", "operational-standard");
+  const [complexityId, setComplexityId] = useSavedState("calc-complexity", "standard");
+  const [selectedModules, setSelectedModules] = useSavedState("calc-modules", []);
+  const [moduleDraft, setModuleDraft] = useState("");
+  const [rounding, setRounding] = useSavedState("calc-rounding", "charm");
+  const [discountRate, setDiscountRate] = useSavedState("calc-discount", 0);
+  const [manualAdjustment, setManualAdjustment] = useSavedState("calc-adjustment", 0);
+  const [infrastructure, setInfrastructure] = useSavedState("calc-infra", "standard");
+  const [tools, setTools] = useSavedState("calc-tools", "none");
+  const [marketingCostRate, setMarketingCostRate] = useSavedState("calc-marketing-cost", 0);
+  const [overheadRate, setOverheadRate] = useSavedState("calc-overhead", 0.05);
+  const [otherCost, setOtherCost] = useSavedState("calc-other-cost", 0);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!segmentPackages.some(item => item.id === packageId)) setPackageId(segmentPackages[0]?.id || packages[0].id);
+  }, [segment, packageId, segmentPackages]);
+
+  const base = packages.find(item => item.id === packageId) || segmentPackages[0] || packages[0];
+  const complexity = complexityOptions.find(item => item.id === complexityId) || complexityOptions[0];
+
+  const dependencyIds = useMemo(() => {
+    const found = new Set();
+    const walk = id => modules.find(item => item.id === id)?.requires?.forEach(dep => {
+      if (!selectedModules.includes(dep) && !found.has(dep)) { found.add(dep); walk(dep); }
+    });
+    selectedModules.forEach(walk);
+    return [...found];
+  }, [selectedModules]);
+
+  const effectiveModuleIds = [...new Set([...selectedModules, ...dependencyIds])];
+  const selectedItems = effectiveModuleIds.map(id => modules.find(item => item.id === id)).filter(Boolean);
+  const chargeableItems = selectedItems.filter(item => !base.features.includes(item.id));
+  const addonTotal = chargeableItems.reduce((sum, item) => sum + item.price, 0);
+  const complexityCost = Math.round((base.price + addonTotal) * complexity.rate);
+  const subtotal = Math.max(0, base.price + addonTotal + complexityCost + manualAdjustment);
+  const discount = Math.round(subtotal * Number(discountRate));
+  const beforeRounding = Math.max(0, subtotal - discount);
+  const sellingPrice = rounding === "exact" ? beforeRounding
+    : rounding === "50k" ? Math.ceil(beforeRounding / 50000) * 50000
+    : Math.max(99000, Math.round(beforeRounding / 500000) * 500000 - 1000);
+
+  const infrastructureCost = fixedCostOptions.infrastructure.find(item => item[0] === infrastructure)?.[2] || 0;
+  const toolsCost = fixedCostOptions.tools.find(item => item[0] === tools)?.[2] || 0;
+  const marketingCost = Math.round(sellingPrice * Number(marketingCostRate));
+  const overheadCost = Math.round(sellingPrice * Number(overheadRate));
+  const directCosts = infrastructureCost + toolsCost + marketingCost + overheadCost + otherCost;
+  const netRevenue = Math.max(0, sellingPrice - directCosts);
+  const margin = sellingPrice ? (netRevenue / sellingPrice) * 100 : 0;
+  const developerPool = netRevenue * 0.4;
+  const marketingPool = netRevenue * 0.3;
+  const companyPool = netRevenue * 0.3;
+
+  const addModule = () => {
+    if (moduleDraft && !selectedModules.includes(moduleDraft)) setSelectedModules(prev => [...prev, moduleDraft]);
+    setModuleDraft("");
+  };
+
+  const reset = () => {
+    setSegment("umkm"); setPackageId("operational-standard"); setComplexityId("standard");
+    setSelectedModules([]); setRounding("charm"); setDiscountRate(0); setManualAdjustment(0);
+    setInfrastructure("standard"); setTools("none"); setMarketingCostRate(0); setOverheadRate(0.05); setOtherCost(0);
+  };
+
+  const copySummary = async () => {
+    const text = `SOLIVATE PROJECT CALCULATION\nHarga project: ${rupiah(sellingPrice)}\nBiaya langsung: ${rupiah(directCosts)}\nRevenue bersih: ${rupiah(netRevenue)}\nMargin bersih: ${margin.toFixed(1)}%\n\nDeveloper 40%: ${rupiah(developerPool)}\nMarketing 30%: ${rupiah(marketingPool)}\nKas Perusahaan 30%: ${rupiah(companyPool)}`;
+    await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800);
+  };
+
+  return <div className="calculator-app">
+    <header className="app-header">
+      <div className="brand-lockup"><img src="/solivate-logo.webp" alt="Solivate Studio"/><span>Project Profit Calculator</span></div>
+      <div className="header-actions"><button onClick={reset}><RefreshCcw size={15}/> Reset</button><button className="print-button" onClick={() => window.print()}><Printer size={15}/> Print</button></div>
+    </header>
+
+    <section className="hero-strip">
+      <div><span className="overline">INTERNAL FINANCE TOOL · 2026</span><h1>Hitung project.<br/><em>Sisihkan biaya.</em> Bagi hasil.</h1><p>Satu layar untuk estimasi harga, biaya operasional, keuntungan bersih, dan pembagian otomatis ke seluruh tim.</p></div>
+      <div className="hero-formula"><span>REVENUE</span><Minus size={16}/><span>BIAYA</span><ArrowDown size={16}/><strong>NET PROFIT</strong></div>
+    </section>
+
+    <main className="calculator-layout">
+      <section className="input-column">
+        <article className="calc-card project-card">
+          <div className="card-heading"><span>01</span><div><p>PROJECT VALUE</p><h2>Tentukan harga project</h2></div><Calculator size={21}/></div>
+
+          <label className="section-label">Kategori project</label>
+          <div className="segment-tabs">{segments.map(item => <button key={item.id} className={segment === item.id ? "active" : ""} onClick={() => setSegment(item.id)}><span>{item.short}</span><small>{item.label}</small></button>)}</div>
+
+          <div className="field-grid">
+            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={`${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
+              {segmentPackages.map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}
+            </SelectField>
+            <SelectField label="Perkiraan kompleksitas" value={complexityId} onChange={e => setComplexityId(e.target.value)} hint={complexity.note}>
+              {complexityOptions.map(item => <option value={item.id} key={item.id}>{item.label} {item.rate ? `(+${item.rate * 100}%)` : "(normal)"}</option>)}
+            </SelectField>
+          </div>
+
+          <div className="addon-builder">
+            <label className="section-label">Add-on project</label>
+            <div className="add-row"><div className="select-wrap"><select value={moduleDraft} onChange={e => setModuleDraft(e.target.value)}><option value="">Pilih fitur tambahan…</option>{modules.filter(item => !selectedModules.includes(item.id)).map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}</select><ChevronDown size={15}/></div><button onClick={addModule} disabled={!moduleDraft}><Plus size={17}/> Tambah</button></div>
+            <div className="selected-addons">{selectedItems.length ? selectedItems.map(item => {
+              const included = base.features.includes(item.id); const dependency = dependencyIds.includes(item.id);
+              return <div key={item.id}><span><Check size={13}/></span><div><strong>{item.name}</strong><small>{included ? "Sudah termasuk paket" : dependency ? "Dependency otomatis" : "Add-on"}</small></div><b>{included ? "Included" : rupiah(item.price)}</b>{!dependency && <button onClick={() => setSelectedModules(prev => prev.filter(id => id !== item.id))}><Trash2 size={14}/></button>}</div>;
+            }) : <p className="empty-addons">Belum ada add-on. Harga dimulai dari paket dasar.</p>}</div>
+          </div>
+
+          <div className="field-grid price-options">
+            <SelectField label="Diskon" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))}>
+              <option value={0}>Tanpa diskon</option><option value={0.05}>Diskon 5%</option><option value={0.1}>Diskon 10%</option><option value={0.15}>Diskon 15%</option>
+            </SelectField>
+            <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)}>
+              <option value="charm">Charm price x.999</option><option value="50k">Bulat ke atas 50 ribu</option><option value="exact">Nominal exact</option>
+            </SelectField>
+            <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Tambahan effort atau custom request"/>
+          </div>
+
+          <div className="formula-line"><span>Base <b>{rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
+        </article>
+
+        <article className="calc-card cost-card">
+          <div className="card-heading"><span>02</span><div><p>PROJECT COST</p><h2>Perkirakan biaya langsung</h2></div><ReceiptText size={21}/></div>
+          <div className="cost-note"><ShieldCheck size={17}/><p>Biaya ini dikurangi dari harga project terlebih dahulu. Pembagian 40/30/30 dihitung dari <strong>revenue bersih</strong>.</p></div>
+          <div className="field-grid">
+            <SelectField label="Domain & infrastructure" value={infrastructure} onChange={e => setInfrastructure(e.target.value)}>{fixedCostOptions.infrastructure.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Tools / API / software" value={tools} onChange={e => setTools(e.target.value)}>{fixedCostOptions.tools.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Marketing / acquisition" value={marketingCostRate} onChange={e => setMarketingCostRate(Number(e.target.value))}>{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
+            <SelectField label="Overhead project" value={overheadRate} onChange={e => setOverheadRate(Number(e.target.value))} hint="Transport, meeting, listrik, dan kebutuhan kecil">{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
+            <MoneyInput label="Biaya lain-lain" value={otherCost} onChange={setOtherCost} hint="Outsource, aset, atau kebutuhan khusus"/>
+          </div>
+          <div className="cost-breakdown">
+            <div><Server size={15}/><span>Infrastructure</span><b>{rupiah(infrastructureCost)}</b></div>
+            <div><WalletCards size={15}/><span>Tools / API</span><b>{rupiah(toolsCost)}</b></div>
+            <div><Megaphone size={15}/><span>Marketing</span><b>{rupiah(marketingCost)}</b></div>
+            <div><ReceiptText size={15}/><span>Overhead + lainnya</span><b>{rupiah(overheadCost + otherCost)}</b></div>
+          </div>
+        </article>
+      </section>
+
+      <aside className="result-column">
+        <article className="result-card">
+          <div className="result-label"><span>LIVE RESULT</span><CircleDollarSign size={19}/></div>
+          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}</small></div>
+          <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className="net"><span>Revenue bersih</span><b>{rupiah(netRevenue)}</b></div></div>
+          <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
+          <div className="pool-preview"><div><i style={{ width: "40%" }}/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div><i style={{ width: "30%" }}/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div><i style={{ width: "30%" }}/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>
+          <div className="result-actions"><button onClick={copySummary}>{copied ? <Check size={15}/> : <Copy size={15}/>} {copied ? "Tersalin" : "Copy ringkasan"}</button><button onClick={() => window.print()}><Printer size={15}/> Print</button></div>
+        </article>
+      </aside>
+    </main>
+
+    <section className="distribution-section">
+      <div className="distribution-head"><div><span className="overline">PASAL 3 · PEMBAGIAN HASIL USAHA</span><h2>Pembagian dari revenue bersih.</h2><p>Nominal otomatis mengikuti hasil setelah seluruh biaya langsung project dikurangi.</p></div><div className="net-stamp"><span>AVAILABLE TO DISTRIBUTE</span><strong>{rupiah(netRevenue)}</strong></div></div>
+      <div className="pool-grid">
+        <article className="pool-card developer"><header><div><Code2 size={20}/><span>Developer Pool</span></div><strong>{rupiah(developerPool)}</strong><small>40% NET REVENUE</small></header><SplitTable rows={developerSplit} pool={developerPool} color="#00b4d8"/></article>
+        <article className="pool-card marketing"><header><div><Megaphone size={20}/><span>Marketing Pool</span></div><strong>{rupiah(marketingPool)}</strong><small>30% NET REVENUE</small></header><SplitTable rows={marketingSplit} pool={marketingPool} color="#ff5a5f"/></article>
+        <article className="pool-card company"><header><div><Landmark size={20}/><span>Kas Perusahaan</span></div><strong>{rupiah(companyPool)}</strong><small>30% NET REVENUE</small></header><SplitTable rows={companySplit} pool={companyPool} color="#d7ff3f" company/></article>
+      </div>
+      <div className="distribution-note"><Sparkles size={17}/><p><strong>Catatan:</strong> Operasional di Kas Perusahaan adalah alokasi kas untuk operasional perusahaan setelah project selesai. Ini berbeda dari biaya langsung project yang sudah dikurangi di bagian atas.</p></div>
+    </section>
+
+    <footer className="app-footer"><span>Solivate Studio · Internal Finance Calculator</span><span>Harga, biaya, dan pembagian tersimpan otomatis di perangkat ini.</span></footer>
+  </div>;
+}
+
+createRoot(document.getElementById("root")).render(<App/>);
