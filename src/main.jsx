@@ -6,7 +6,7 @@ import {
   RefreshCcw, Server, ShieldCheck, Sparkles, Trash2, TrendingUp,
   WalletCards
 } from "lucide-react";
-import { modules, packages, rupiah, segments } from "./data";
+import { modules, packagePriceLabel, packages, rupiah, segments } from "./data";
 import "./styles.css";
 
 const complexityOptions = [
@@ -80,6 +80,7 @@ function SplitTable({ rows, pool, color, company = false }) {
 function App() {
   const [segment, setSegment] = useSavedState("calc-segment", "umkm");
   const segmentPackages = useMemo(() => packages.filter(item => item.segment === segment), [segment]);
+  const packageGroups = useMemo(() => [...new Set(segmentPackages.map(item => item.solution))], [segmentPackages]);
   const [packageId, setPackageId] = useSavedState("calc-package", "operational-standard");
   const [complexityId, setComplexityId] = useSavedState("calc-complexity", "standard");
   const [selectedModules, setSelectedModules] = useSavedState("calc-modules", []);
@@ -118,7 +119,7 @@ function App() {
   const subtotal = Math.max(0, base.price + addonTotal + complexityCost + manualAdjustment);
   const discount = Math.round(subtotal * Number(discountRate));
   const beforeRounding = Math.max(0, subtotal - discount);
-  const sellingPrice = rounding === "exact" ? beforeRounding
+  const sellingPrice = beforeRounding <= 0 ? 0 : rounding === "exact" ? beforeRounding
     : rounding === "50k" ? Math.ceil(beforeRounding / 50000) * 50000
     : Math.max(99000, Math.round(beforeRounding / 500000) * 500000 - 1000);
 
@@ -127,11 +128,12 @@ function App() {
   const marketingCost = Math.round(sellingPrice * Number(marketingCostRate));
   const overheadCost = Math.round(sellingPrice * Number(overheadRate));
   const directCosts = infrastructureCost + toolsCost + marketingCost + overheadCost + otherCost;
-  const netRevenue = Math.max(0, sellingPrice - directCosts);
-  const margin = sellingPrice ? (netRevenue / sellingPrice) * 100 : 0;
-  const developerPool = netRevenue * 0.4;
-  const marketingPool = netRevenue * 0.3;
-  const companyPool = netRevenue * 0.3;
+  const netRevenue = sellingPrice - directCosts;
+  const distributableRevenue = Math.max(0, netRevenue);
+  const margin = sellingPrice ? (netRevenue / sellingPrice) * 100 : directCosts ? -100 : 0;
+  const developerPool = distributableRevenue * 0.4;
+  const marketingPool = distributableRevenue * 0.3;
+  const companyPool = distributableRevenue * 0.3;
 
   const addModule = () => {
     if (moduleDraft && !selectedModules.includes(moduleDraft)) setSelectedModules(prev => [...prev, moduleDraft]);
@@ -169,13 +171,15 @@ function App() {
           <div className="segment-tabs">{segments.map(item => <button key={item.id} className={segment === item.id ? "active" : ""} onClick={() => setSegment(item.id)}><span>{item.short}</span><small>{item.label}</small></button>)}</div>
 
           <div className="field-grid">
-            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={`${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
-              {segmentPackages.map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}
+            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={base.custom ? "Custom quotation — isi Adjustment manual untuk membuat estimasi" : base.maxPrice ? `Range ${packagePriceLabel(base)} · kalkulator memakai batas bawah` : `${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
+              {packageGroups.map(group => <optgroup label={group} key={group}>{segmentPackages.filter(item => item.solution === group).map(item => <option value={item.id} key={item.id}>{item.name} — {packagePriceLabel(item)}</option>)}</optgroup>)}
             </SelectField>
             <SelectField label="Perkiraan kompleksitas" value={complexityId} onChange={e => setComplexityId(e.target.value)} hint={complexity.note}>
               {complexityOptions.map(item => <option value={item.id} key={item.id}>{item.label} {item.rate ? `(+${item.rate * 100}%)` : "(normal)"}</option>)}
             </SelectField>
           </div>
+
+          {base.custom && <div className="custom-quote-notice"><Sparkles size={17}/><div><strong>Custom Quotation</strong><p>Paket ini tidak punya harga otomatis. Masukkan estimasi awal pada Adjustment manual, lalu tambahkan fitur dan biaya sesuai hasil scoping.</p></div></div>}
 
           <div className="addon-builder">
             <label className="section-label">Add-on project</label>
@@ -196,7 +200,7 @@ function App() {
             <MoneyInput label="Adjustment manual" value={manualAdjustment} onChange={setManualAdjustment} hint="Tambahan effort atau custom request"/>
           </div>
 
-          <div className="formula-line"><span>Base <b>{rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
+          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Minus size={14}/><span>Diskon <b>{rupiah(discount)}</b></span></div>
         </article>
 
         <article className="calc-card cost-card">
@@ -222,8 +226,8 @@ function App() {
         <article className="result-card">
           <div className="result-label"><span>LIVE RESULT</span><CircleDollarSign size={19}/></div>
           <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}</small></div>
-          <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className="net"><span>Revenue bersih</span><b>{rupiah(netRevenue)}</b></div></div>
-          <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
+          <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className={netRevenue < 0 ? "net loss" : "net"}><span>{netRevenue < 0 ? "Proyeksi rugi" : "Revenue bersih"}</span><b>{rupiah(netRevenue)}</b></div></div>
+          <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{netRevenue < 0 ? "Biaya melebihi harga project" : margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
           <div className="pool-preview"><div><i style={{ width: "40%" }}/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div><i style={{ width: "30%" }}/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div><i style={{ width: "30%" }}/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>
           <div className="result-actions"><button onClick={copySummary}>{copied ? <Check size={15}/> : <Copy size={15}/>} {copied ? "Tersalin" : "Copy ringkasan"}</button><button onClick={() => window.print()}><Printer size={15}/> Print</button></div>
         </article>
@@ -231,7 +235,7 @@ function App() {
     </main>
 
     <section className="distribution-section">
-      <div className="distribution-head"><div><span className="overline">PASAL 3 · PEMBAGIAN HASIL USAHA</span><h2>Pembagian dari revenue bersih.</h2><p>Nominal otomatis mengikuti hasil setelah seluruh biaya langsung project dikurangi.</p></div><div className="net-stamp"><span>AVAILABLE TO DISTRIBUTE</span><strong>{rupiah(netRevenue)}</strong></div></div>
+      <div className="distribution-head"><div><span className="overline">PASAL 3 · PEMBAGIAN HASIL USAHA</span><h2>Pembagian dari revenue bersih.</h2><p>Nominal otomatis mengikuti hasil positif setelah seluruh biaya langsung project dikurangi.</p></div><div className="net-stamp"><span>AVAILABLE TO DISTRIBUTE</span><strong>{rupiah(distributableRevenue)}</strong></div></div>
       <div className="pool-grid">
         <article className="pool-card developer"><header><div><Code2 size={20}/><span>Developer Pool</span></div><strong>{rupiah(developerPool)}</strong><small>40% NET REVENUE</small></header><SplitTable rows={developerSplit} pool={developerPool} color="#00b4d8"/></article>
         <article className="pool-card marketing"><header><div><Megaphone size={20}/><span>Marketing Pool</span></div><strong>{rupiah(marketingPool)}</strong><small>30% NET REVENUE</small></header><SplitTable rows={marketingSplit} pool={marketingPool} color="#ff5a5f"/></article>

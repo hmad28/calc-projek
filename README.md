@@ -21,7 +21,9 @@ Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung proje
 ## Fitur
 
 - Pilihan tiga kategori pricing Solivate Studio.
-- Dropdown paket dasar berdasarkan kategori.
+- 56 paket lengkap dari Wedding Basic sampai Enterprise System.
+- Dropdown paket dasar yang dikelompokkan berdasarkan jenis layanan.
+- Dukungan harga fixed, range, mulai dari, dan Custom Quotation.
 - Estimasi kompleksitas Standard, Moderate, Complex, atau Advanced.
 - Add-on picker dengan harga realtime.
 - Dependency otomatis dan pencegahan double charge untuk fitur included.

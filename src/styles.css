@@ -65,6 +65,10 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:3px soli
 .selected-addons button { display:grid; width:28px; height:28px; place-items:center; color:var(--muted); background:transparent; }
 .selected-addons button:hover { color:var(--coral); background:#fff0f0; }
 .empty-addons { margin:0; padding:12px; color:var(--muted); border:1px dashed var(--line); background:#fff; font-size:8px; }
+.custom-quote-notice { display:flex; gap:10px; align-items:flex-start; margin:18px 0 0; padding:14px; border:1px solid #c9d8a0; background:#f7ffe1; }
+.custom-quote-notice svg { flex:0 0 auto; color:#688000; }
+.custom-quote-notice strong { display:block; color:#395000; font-size:9px; }
+.custom-quote-notice p { margin:4px 0 0; color:#61713c; font-size:8px; line-height:1.55; }
 .price-options { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .money-input { display:grid; grid-template-columns:40px 1fr; min-height:45px; align-items:center; border:1px solid var(--line); background:#fafbfc; }
 .money-input b { padding-left:12px; color:var(--muted); font-size:9px; }
@@ -98,6 +102,7 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:3px soli
 .result-math b { color:#ff9598; }
 .result-math .net { padding-top:10px; border-top:1px dashed rgba(255,255,255,.12); }
 .result-math .net span,.result-math .net b { color:#fff; font-size:12px; }
+.result-math .net.loss span,.result-math .net.loss b { color:#ff999c; }
 .margin-banner { display:grid; grid-template-columns:28px 1fr auto; gap:8px; align-items:center; margin:18px 0; padding:12px; }
 .margin-banner.healthy { color:#82e9b6; background:rgba(37,180,107,.12); }.margin-banner.medium { color:#ffe184; background:rgba(255,193,31,.12); }.margin-banner.low { color:#ff999c; background:rgba(255,90,95,.13); }
 .margin-banner div { display:flex; gap:6px; align-items:center; }
