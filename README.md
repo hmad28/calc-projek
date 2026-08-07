@@ -1,42 +1,32 @@
 # Solivate Project Profit Calculator
 
-Kalkulator internal satu layar untuk memperkirakan harga project, biaya langsung, revenue bersih, margin, dan pembagian hasil usaha tim Solivate Studio.
+Kalkulator umum satu layar untuk menghitung harga project, diskon, biaya langsung, revenue bersih, margin, dan pembagian hasil usaha tim Solivate Studio.
 
-Pilih kategori, paket, kompleksitas, add-on, dan estimasi biaya melalui dropdown. Seluruh hasil diperbarui secara realtime tanpa perlu mengisi data customer atau melewati quotation wizard.
+Isi nama project dan harga deal, lalu tambahkan diskon serta biaya yang relevan. Tidak ada kategori, paket, add-on, data customer, atau quotation wizard.
 
 ## Perhitungan utama
 
 ```text
-Base Package + Add-on + Complexity + Adjustment - Discount
+Harga Project - Diskon Persen - Diskon Nominal = Harga Final
                               ↓
-                       Harga Project
+Harga Final - Domain - Hosting - Database - Biaya Lain
                               ↓
-Harga Project - Biaya Langsung Project = Revenue Bersih
+                        Revenue Bersih
                               ↓
-        Developer 40% + Marketing 30% + Kas 30%
+          Developer 40% + Marketing 30% + Kas 30%
 ```
 
 Pembagian tim selalu dihitung dari **revenue bersih setelah biaya langsung project dikurangi**.
 
 ## Fitur
 
-- Pilihan tiga kategori pricing Solivate Studio.
-- 56 paket lengkap dari Wedding Basic sampai Enterprise System.
-- Dropdown paket dasar yang dikelompokkan berdasarkan jenis layanan.
-- Dukungan harga fixed, range, mulai dari, dan Custom Quotation.
-- Estimasi kompleksitas Standard, Moderate, Complex, atau Advanced.
-- Add-on picker yang difilter otomatis berdasarkan jenis paket.
-- Dependency otomatis dan pencegahan double charge untuk fitur included.
-- Harga paket tetap exact saat belum ada tambahan scope; pembulatan hanya diterapkan pada add-on atau kompleksitas.
-- Tambahan scope manual untuk request berbayar yang belum tersedia sebagai add-on.
+- Nama project dan harga project/deal.
 - Input nominal diterapkan setelah selesai diketik agar harga tidak meloncat pada setiap digit.
-- Diskon persen dan diskon nominal yang sama-sama langsung memengaruhi harga final.
+- Diskon persen dan diskon nominal opsional.
 - Estimasi biaya:
   - domain;
   - hosting atau server;
-  - tools, API, dan software;
-  - marketing atau acquisition;
-  - overhead project;
+  - database opsional;
   - biaya lain-lain.
 - Revenue bersih dan indikator net margin.
 - Pembagian otomatis berdasarkan Pasal 3.
@@ -96,8 +86,8 @@ calc-projek/
 │   ├── favicon.ico
 │   └── solivate-logo.webp
 ├── src/
-│   ├── data.js       # Package, module, harga, dan dependency defaults
-│   ├── main.jsx      # Kalkulasi harga, biaya, profit, dan pembagian
+│   ├── data.js       # Helper format Rupiah dan katalog lama
+│   ├── main.jsx      # Kalkulasi umum harga, biaya, profit, dan pembagian
 │   └── styles.css    # Solivate dashboard design system
 ├── index.html
 ├── package.json

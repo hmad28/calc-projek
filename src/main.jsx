@@ -1,44 +1,37 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowDown, Calculator, Check, ChevronDown, CircleDollarSign, Code2,
-  Copy, Landmark, Megaphone, Minus, Plus, Printer, ReceiptText,
-  Globe2, HardDrive, RefreshCcw, ShieldCheck, Sparkles, Trash2, TrendingUp,
-  WalletCards
+  Copy, Database, Globe2, HardDrive, Landmark, Megaphone, Minus,
+  Printer, ReceiptText, RefreshCcw, Sparkles, TrendingUp, WalletCards
 } from "lucide-react";
-import { modules, packagePriceLabel, packages, rupiah, segments } from "./data";
+import { rupiah } from "./data";
 import "./styles.css";
 
-const complexityOptions = [
-  { id: "standard", label: "Standard", note: "Scope jelas, flow umum", rate: 0 },
-  { id: "moderate", label: "Moderate", note: "Ada custom flow ringan", rate: 0.1 },
-  { id: "complex", label: "Complex", note: "Banyak logic dan role", rate: 0.2 },
-  { id: "advanced", label: "Advanced", note: "Integrasi / workflow berat", rate: 0.35 }
-];
-
-const fixedCostOptions = {
+const costOptions = {
   domain: [
-    ["included", "Sudah termasuk / tidak ada", 0],
+    ["none", "Tidak ada / sudah termasuk", 0],
     ["standard", "Domain umum (.com / .site / .me)", 150000],
     ["indonesia", "Domain Indonesia (.id / .or.id / .sch.id)", 300000],
-    ["special", "Ekstensi khusus / premium", 500000]
+    ["premium", "Ekstensi khusus / premium", 500000]
   ],
   hosting: [
-    ["included", "Sudah termasuk / tidak ada", 0],
+    ["none", "Tidak ada / sudah termasuk", 0],
     ["standard", "Managed hosting standard", 200000],
     ["business", "Business hosting", 750000],
-    ["vps", "VPS / dedicated setup", 1500000]
+    ["vps", "VPS / dedicated server", 1500000]
   ],
-  tools: [
-    ["none", "Tidak ada biaya tools", 0],
-    ["light", "Tools / API ringan", 250000],
-    ["standard", "Tools / API standard", 500000],
-    ["heavy", "Tools / API intensif", 1000000]
+  database: [
+    ["none", "Tidak ada biaya database", 0],
+    ["basic", "Database ringan", 150000],
+    ["managed", "Managed database", 500000],
+    ["dedicated", "Dedicated database", 1200000]
   ]
 };
 
-const percentOptions = [
-  [0, "Tidak ada"], [0.05, "5% dari harga project"], [0.1, "10% dari harga project"], [0.15, "15% dari harga project"]
+const discountOptions = [
+  [0, "Tanpa diskon persen"], [0.05, "Diskon 5%"], [0.1, "Diskon 10%"],
+  [0.15, "Diskon 15%"], [0.2, "Diskon 20%"], [0.25, "Diskon 25%"]
 ];
 
 const developerSplit = [
@@ -55,26 +48,6 @@ const companySplit = [
   ["Misc / Bonus Pool", 0.05, 0.015, "Bonus performa dan team event"]
 ];
 
-const addonCompatibility = {
-  "Website Personal": ["cms", "blog", "gallery", "form", "wa-template", "document"],
-  "Personal Blog": ["gallery", "form", "wa-template", "email", "document"],
-  "Wedding": ["gallery", "form", "wa-template", "qr-generator", "qr-scanner", "qr-attendance", "dashboard", "export"],
-  "Institusi": ["cms", "blog", "gallery", "form", "database", "wa-template", "email", "report", "dashboard", "export", "document"],
-  "Website UMKM": ["cms", "blog", "gallery", "form", "database", "booking", "order", "wa-template", "email", "report", "dashboard"],
-  "Sistem Bisnis UMKM": ["form", "database", "login", "multi-role", "booking", "order", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
-  "Event": ["form", "database", "login", "multi-role", "order", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner", "qr-attendance"],
-  "Institusi Operasional": modules.map(item => item.id),
-  "E-Commerce": ["login", "multi-role", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
-  "POS": ["login", "multi-role", "inventory", "approval", "qris", "notification", "report", "dashboard", "export", "audit", "document"],
-  "Booking": ["booking", "login", "multi-role", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
-  "CRM": ["form", "database", "login", "multi-role", "approval", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document"],
-  "Website Corporate": ["cms", "blog", "gallery", "form", "database", "login", "multi-role", "wa-template", "email", "report", "dashboard", "document"],
-  "Operational / CRM": ["form", "database", "login", "multi-role", "booking", "order", "inventory", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
-  "Government": ["cms", "blog", "gallery", "form", "database", "login", "multi-role", "approval", "wa-template", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
-  "Healthcare": ["form", "database", "login", "multi-role", "booking", "approval", "qris", "wa-template", "wa-api", "email", "notification", "report", "dashboard", "export", "audit", "document", "qr-generator", "qr-scanner"],
-  "ERP / SaaS / Custom": modules.map(item => item.id)
-};
-
 function useSavedState(key, initial) {
   const [value, setValue] = useState(() => {
     try { return JSON.parse(localStorage.getItem(key)) ?? initial; } catch { return initial; }
@@ -83,19 +56,25 @@ function useSavedState(key, initial) {
   return [value, setValue];
 }
 
-function SelectField({ label, hint, value, onChange, children }) {
+function TextInput({ label, value, onChange, hint, placeholder }) {
+  return <label className="select-field"><span>{label}</span><input className="text-input" type="text" value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />{hint && <small>{hint}</small>}</label>;
+}
+
+function SelectField({ label, value, onChange, hint, children }) {
   return <label className="select-field"><span>{label}</span><div className="select-wrap"><select value={value} onChange={onChange}>{children}</select><ChevronDown size={15}/></div>{hint && <small>{hint}</small>}</label>;
 }
 
 function MoneyInput({ label, value, onChange, hint }) {
   const [draft, setDraft] = useState(value ? String(value) : "");
   useEffect(() => { setDraft(value ? String(value) : ""); }, [value]);
+
   const commit = () => {
     const nextValue = Math.max(0, Number(draft) || 0);
     setDraft(nextValue ? String(nextValue) : "");
     onChange(nextValue);
   };
-  return <label className="select-field"><span>{label}</span><div className="money-input"><b>Rp</b><input type="text" inputMode="numeric" placeholder="0" value={draft} onFocus={e => e.target.select()} onChange={e => setDraft(e.target.value.replace(/\D/g, ""))} onBlur={commit} onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} /></div>{hint && <small>{hint}</small>}</label>;
+
+  return <label className="select-field"><span>{label}</span><div className="money-input"><b>Rp</b><input type="text" inputMode="numeric" placeholder="0" value={draft} onFocus={event => event.target.select()} onChange={event => setDraft(event.target.value.replace(/\D/g, ""))} onBlur={commit} onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }} /></div>{hint && <small>{hint}</small>}</label>;
 }
 
 function SplitTable({ rows, pool, color, company = false }) {
@@ -111,92 +90,42 @@ function SplitTable({ rows, pool, color, company = false }) {
 }
 
 function App() {
-  const [segment, setSegment] = useSavedState("calc-segment", "umkm");
-  const segmentPackages = useMemo(() => packages.filter(item => item.segment === segment), [segment]);
-  const packageGroups = useMemo(() => [...new Set(segmentPackages.map(item => item.solution))], [segmentPackages]);
-  const [packageId, setPackageId] = useSavedState("calc-package", "operational-standard");
-  const [complexityId, setComplexityId] = useSavedState("calc-complexity", "standard");
-  const [selectedModules, setSelectedModules] = useSavedState("calc-modules", []);
-  const [moduleDraft, setModuleDraft] = useState("");
-  const [rounding, setRounding] = useSavedState("calc-rounding", "exact");
-  const [discountRate, setDiscountRate] = useSavedState("calc-discount", 0);
-  const [scopeAdjustment, setScopeAdjustment] = useSavedState("calc-scope-adjustment", 0);
-  const [manualDiscount, setManualDiscount] = useSavedState("calc-manual-discount", 0);
-  const [domain, setDomain] = useSavedState("calc-domain", "standard");
-  const [hosting, setHosting] = useSavedState("calc-hosting", "standard");
-  const [tools, setTools] = useSavedState("calc-tools", "none");
-  const [marketingCostRate, setMarketingCostRate] = useSavedState("calc-marketing-cost", 0);
-  const [overheadRate, setOverheadRate] = useSavedState("calc-overhead", 0.05);
-  const [otherCost, setOtherCost] = useSavedState("calc-other-cost", 0);
+  const [projectName, setProjectName] = useSavedState("general-project-name", "");
+  const [projectPrice, setProjectPrice] = useSavedState("general-project-price", 0);
+  const [discountRate, setDiscountRate] = useSavedState("general-discount-rate", 0);
+  const [manualDiscount, setManualDiscount] = useSavedState("general-manual-discount", 0);
+  const [domain, setDomain] = useSavedState("general-domain", "none");
+  const [hosting, setHosting] = useSavedState("general-hosting", "none");
+  const [database, setDatabase] = useSavedState("general-database", "none");
+  const [otherCost, setOtherCost] = useSavedState("general-other-cost", 0);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!segmentPackages.some(item => item.id === packageId)) setPackageId(segmentPackages[0]?.id || packages[0].id);
-  }, [segment, packageId, segmentPackages]);
+  const percentageDiscount = Math.round(projectPrice * Number(discountRate));
+  const appliedManualDiscount = Math.min(manualDiscount, Math.max(0, projectPrice - percentageDiscount));
+  const totalDiscount = Math.min(projectPrice, percentageDiscount + appliedManualDiscount);
+  const finalPrice = Math.max(0, projectPrice - totalDiscount);
 
-  const base = packages.find(item => item.id === packageId) || segmentPackages[0] || packages[0];
-  const complexity = complexityOptions.find(item => item.id === complexityId) || complexityOptions[0];
-  const compatibleAddonIds = addonCompatibility[base.solution] || [];
-  const availableModules = modules.filter(item => compatibleAddonIds.includes(item.id) && !base.features.includes(item.id) && !selectedModules.includes(item.id));
-  const availableModuleGroups = [...new Set(availableModules.map(item => item.group))];
-
-  useEffect(() => {
-    setSelectedModules(previous => previous.filter(id => compatibleAddonIds.includes(id) && !base.features.includes(id)));
-    setModuleDraft("");
-  }, [base.id]);
-
-  const dependencyIds = useMemo(() => {
-    const found = new Set();
-    const walk = id => modules.find(item => item.id === id)?.requires?.forEach(dep => {
-      if (!selectedModules.includes(dep) && !found.has(dep)) { found.add(dep); walk(dep); }
-    });
-    selectedModules.forEach(walk);
-    return [...found];
-  }, [selectedModules]);
-
-  const effectiveModuleIds = [...new Set([...selectedModules, ...dependencyIds])];
-  const selectedItems = effectiveModuleIds.map(id => modules.find(item => item.id === id)).filter(Boolean);
-  const chargeableItems = selectedItems.filter(item => !base.features.includes(item.id));
-  const addonTotal = chargeableItems.reduce((sum, item) => sum + item.price, 0);
-  const complexityCost = Math.round((base.price + addonTotal) * complexity.rate);
-  const scopeSubtotal = Math.max(0, base.price + addonTotal + complexityCost);
-  const hasScopePriceChange = addonTotal !== 0 || complexityCost !== 0;
-  const roundedScopePrice = scopeSubtotal <= 0 ? 0 : !hasScopePriceChange || rounding === "exact" ? scopeSubtotal
-    : rounding === "50k" ? Math.ceil(scopeSubtotal / 50000) * 50000
-    : Math.max(99000, Math.round(scopeSubtotal / 500000) * 500000 - 1000);
-  const adjustedPrice = Math.max(0, roundedScopePrice + scopeAdjustment);
-  const percentageDiscount = Math.round(adjustedPrice * Number(discountRate));
-  const appliedManualDiscount = Math.min(manualDiscount, Math.max(0, adjustedPrice - percentageDiscount));
-  const discount = Math.min(adjustedPrice, percentageDiscount + appliedManualDiscount);
-  const sellingPrice = Math.max(0, adjustedPrice - discount);
-
-  const domainCost = fixedCostOptions.domain.find(item => item[0] === domain)?.[2] || 0;
-  const hostingCost = fixedCostOptions.hosting.find(item => item[0] === hosting)?.[2] || 0;
-  const toolsCost = fixedCostOptions.tools.find(item => item[0] === tools)?.[2] || 0;
-  const marketingCost = Math.round(sellingPrice * Number(marketingCostRate));
-  const overheadCost = Math.round(sellingPrice * Number(overheadRate));
-  const directCosts = domainCost + hostingCost + toolsCost + marketingCost + overheadCost + otherCost;
-  const netRevenue = sellingPrice - directCosts;
+  const domainCost = costOptions.domain.find(item => item[0] === domain)?.[2] || 0;
+  const hostingCost = costOptions.hosting.find(item => item[0] === hosting)?.[2] || 0;
+  const databaseCost = costOptions.database.find(item => item[0] === database)?.[2] || 0;
+  const directCosts = domainCost + hostingCost + databaseCost + otherCost;
+  const netRevenue = finalPrice - directCosts;
   const distributableRevenue = Math.max(0, netRevenue);
-  const margin = sellingPrice ? (netRevenue / sellingPrice) * 100 : directCosts ? -100 : 0;
+  const margin = finalPrice ? (netRevenue / finalPrice) * 100 : directCosts ? -100 : 0;
   const developerPool = distributableRevenue * 0.4;
   const marketingPool = distributableRevenue * 0.3;
   const companyPool = distributableRevenue * 0.3;
 
-  const addModule = () => {
-    if (moduleDraft && !selectedModules.includes(moduleDraft)) setSelectedModules(prev => [...prev, moduleDraft]);
-    setModuleDraft("");
-  };
-
   const reset = () => {
-    setSegment("umkm"); setPackageId("operational-standard"); setComplexityId("standard");
-    setSelectedModules([]); setRounding("exact"); setDiscountRate(0); setManualDiscount(0); setScopeAdjustment(0);
-    setDomain("standard"); setHosting("standard"); setTools("none"); setMarketingCostRate(0); setOverheadRate(0.05); setOtherCost(0);
+    setProjectName(""); setProjectPrice(0); setDiscountRate(0); setManualDiscount(0);
+    setDomain("none"); setHosting("none"); setDatabase("none"); setOtherCost(0);
   };
 
   const copySummary = async () => {
-    const text = `SOLIVATE PROJECT CALCULATION\nHarga project: ${rupiah(sellingPrice)}\nBiaya langsung: ${rupiah(directCosts)}\nRevenue bersih: ${rupiah(netRevenue)}\nMargin bersih: ${margin.toFixed(1)}%\n\nDeveloper 40%: ${rupiah(developerPool)}\nMarketing 30%: ${rupiah(marketingPool)}\nKas Perusahaan 30%: ${rupiah(companyPool)}`;
-    await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800);
+    const text = `SOLIVATE PROJECT CALCULATION\nProject: ${projectName || "Tanpa nama"}\nHarga project: ${rupiah(projectPrice)}\nTotal diskon: ${rupiah(totalDiscount)}\nHarga setelah diskon: ${rupiah(finalPrice)}\nBiaya project: ${rupiah(directCosts)}\nRevenue bersih: ${rupiah(netRevenue)}\nMargin bersih: ${margin.toFixed(1)}%\n\nDeveloper 40%: ${rupiah(developerPool)}\nMarketing 30%: ${rupiah(marketingPool)}\nKas Perusahaan 30%: ${rupiah(companyPool)}`;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return <div className="calculator-app">
@@ -205,71 +134,40 @@ function App() {
       <div className="header-actions"><button onClick={reset}><RefreshCcw size={15}/> Reset</button><button className="print-button" onClick={() => window.print()}><Printer size={15}/> Print</button></div>
     </header>
 
-    <section className="hero-strip">
-      <div><span className="overline">INTERNAL FINANCE TOOL · 2026</span><h1>Hitung project.<br/><em>Sisihkan biaya.</em> Bagi hasil.</h1><p>Satu layar untuk estimasi harga, biaya operasional, keuntungan bersih, dan pembagian otomatis ke seluruh tim.</p></div>
-      <div className="hero-formula"><span>REVENUE</span><Minus size={16}/><span>BIAYA</span><ArrowDown size={16}/><strong>NET PROFIT</strong></div>
+    <section className="hero-strip compact-hero">
+      <div><span className="overline">GENERAL PROJECT CALCULATOR</span><h1>Masukkan angka.<br/><em>Lihat pembagiannya.</em></h1><p>Hitung harga setelah diskon, kurangi biaya project, lalu bagikan revenue bersih ke Developer, Marketing, dan Kas Perusahaan.</p></div>
+      <div className="hero-formula"><span>HARGA FINAL</span><Minus size={16}/><span>BIAYA PROJECT</span><ArrowDown size={16}/><strong>REVENUE BERSIH</strong></div>
     </section>
 
     <main className="calculator-layout">
       <section className="input-column">
         <article className="calc-card project-card">
-          <div className="card-heading"><span>01</span><div><p>PROJECT VALUE</p><h2>Tentukan harga project</h2></div><Calculator size={21}/></div>
-
-          <label className="section-label">Kategori project</label>
-          <div className="segment-tabs">{segments.map(item => <button key={item.id} className={segment === item.id ? "active" : ""} onClick={() => setSegment(item.id)}><span>{item.short}</span><small>{item.label}</small></button>)}</div>
-
-          <div className="field-grid">
-            <SelectField label="Paket dasar" value={base.id} onChange={e => setPackageId(e.target.value)} hint={base.custom ? "Custom quotation — isi Tambahan scope manual sebagai estimasi awal" : base.maxPrice ? `Range ${packagePriceLabel(base)} · kalkulator memakai batas bawah` : `${base.features.length} fitur included · floor ${rupiah(base.floor)}`}>
-              {packageGroups.map(group => <optgroup label={group} key={group}>{segmentPackages.filter(item => item.solution === group).map(item => <option value={item.id} key={item.id}>{item.name} — {packagePriceLabel(item)}</option>)}</optgroup>)}
+          <div className="card-heading"><span>01</span><div><p>NILAI PROJECT</p><h2>Harga dan diskon</h2></div><Calculator size={21}/></div>
+          <div className="field-grid general-value-grid">
+            <TextInput label="Nama project" value={projectName} onChange={setProjectName} placeholder="Contoh: Website company profile" hint="Nama ini muncul di ringkasan dan hasil print"/>
+            <MoneyInput label="Harga project / deal" value={projectPrice} onChange={setProjectPrice} hint="Sebelum diskon · Enter/klik luar untuk terapkan"/>
+            <SelectField label="Diskon persen (opsional)" value={discountRate} onChange={event => setDiscountRate(Number(event.target.value))}>
+              {discountOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
             </SelectField>
-            <SelectField label="Perkiraan kompleksitas" value={complexityId} onChange={e => setComplexityId(e.target.value)} hint={complexity.note}>
-              {complexityOptions.map(item => <option value={item.id} key={item.id}>{item.label} {item.rate ? `(+${item.rate * 100}%)` : "(normal)"}</option>)}
-            </SelectField>
+            <MoneyInput label="Diskon nominal (opsional)" value={manualDiscount} onChange={setManualDiscount} hint="Ditambahkan setelah diskon persen"/>
           </div>
-
-          {base.custom && <div className="custom-quote-notice"><Sparkles size={17}/><div><strong>Custom Quotation</strong><p>Paket ini tidak punya harga otomatis. Masukkan estimasi awal pada Tambahan scope manual, lalu tambahkan fitur dan biaya sesuai hasil scoping.</p></div></div>}
-
-          <div className="addon-builder">
-            <div className="addon-title"><label className="section-label">Add-on project</label><span>{base.solution} · {availableModules.length} pilihan relevan</span></div>
-            <div className="addon-guidance"><ShieldCheck size={15}/><p>Hanya menampilkan add-on yang cocok untuk <strong>{base.name}</strong>. Fitur yang sudah included disembunyikan otomatis.</p></div>
-            <div className="add-row"><div className="select-wrap"><select value={moduleDraft} onChange={e => setModuleDraft(e.target.value)} disabled={!availableModules.length}><option value="">{availableModules.length ? "Pilih fitur tambahan…" : "Semua fitur relevan sudah dipilih / included"}</option>{availableModuleGroups.map(group => <optgroup label={group} key={group}>{availableModules.filter(item => item.group === group).map(item => <option value={item.id} key={item.id}>{item.name} — {rupiah(item.price)}</option>)}</optgroup>)}</select><ChevronDown size={15}/></div><button onClick={addModule} disabled={!moduleDraft}><Plus size={17}/> Tambah</button></div>
-            <div className="selected-addons">{selectedItems.length ? selectedItems.map(item => {
-              const included = base.features.includes(item.id); const dependency = dependencyIds.includes(item.id);
-              return <div key={item.id}><span><Check size={13}/></span><div><strong>{item.name}</strong><small>{included ? "Sudah termasuk paket" : dependency ? "Dependency otomatis" : "Add-on"}</small></div><b>{included ? "Included" : rupiah(item.price)}</b>{!dependency && <button onClick={() => setSelectedModules(prev => prev.filter(id => id !== item.id))}><Trash2 size={14}/></button>}</div>;
-            }) : <p className="empty-addons">Belum ada add-on. Harga dimulai dari paket dasar.</p>}</div>
-          </div>
-
-          <div className="field-grid price-options">
-            <SelectField label="Diskon" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))}>
-              <option value={0}>Tanpa diskon</option><option value={0.05}>Diskon 5%</option><option value={0.1}>Diskon 10%</option><option value={0.15}>Diskon 15%</option>
-            </SelectField>
-            <MoneyInput label="Diskon nominal" value={manualDiscount} onChange={setManualDiscount} hint="Potongan setelah diskon persen · Enter/klik luar untuk terapkan"/>
-            <SelectField label="Pembulatan harga" value={rounding} onChange={e => setRounding(e.target.value)} hint="Harga paket tetap exact jika belum ada tambahan scope">
-              <option value="exact">Harga sesuai kalkulasi</option><option value="50k">Bulat ke atas 50 ribu</option><option value="charm">Charm price x.999</option>
-            </SelectField>
-            <MoneyInput label="Tambahan scope manual" value={scopeAdjustment} onChange={setScopeAdjustment} hint="Request di luar add-on · Enter/klik luar untuk terapkan"/>
-          </div>
-
-          <div className="formula-line"><span>Base <b>{base.custom ? "Custom" : rupiah(base.price)}</b></span><Plus size={14}/><span>Add-on <b>{rupiah(addonTotal)}</b></span><Plus size={14}/><span>Complexity <b>{rupiah(complexityCost)}</b></span><Plus size={14}/><span>Scope manual <b>{rupiah(scopeAdjustment)}</b></span><Minus size={14}/><span>Diskon % <b>{rupiah(percentageDiscount)}</b></span><Minus size={14}/><span>Diskon nominal <b>{rupiah(appliedManualDiscount)}</b></span></div>
+          <div className="formula-line"><span>Harga awal <b>{rupiah(projectPrice)}</b></span><Minus size={14}/><span>Diskon persen <b>{rupiah(percentageDiscount)}</b></span><Minus size={14}/><span>Diskon nominal <b>{rupiah(appliedManualDiscount)}</b></span><ArrowDown size={14}/><span>Harga final <b>{rupiah(finalPrice)}</b></span></div>
         </article>
 
         <article className="calc-card cost-card">
-          <div className="card-heading"><span>02</span><div><p>PROJECT COST</p><h2>Perkirakan biaya langsung</h2></div><ReceiptText size={21}/></div>
-          <div className="cost-note"><ShieldCheck size={17}/><p>Biaya ini dikurangi dari harga project terlebih dahulu. Pembagian 40/30/30 dihitung dari <strong>revenue bersih</strong>.</p></div>
+          <div className="card-heading"><span>02</span><div><p>BIAYA PROJECT</p><h2>Biaya yang dikeluarkan</h2></div><ReceiptText size={21}/></div>
+          <div className="cost-note"><WalletCards size={17}/><p>Semua biaya di bawah dikurangi dari harga final. Database dan biaya lain-lain boleh dikosongkan jika memang tidak ada.</p></div>
           <div className="field-grid">
-            <SelectField label="Biaya domain" value={domain} onChange={e => setDomain(e.target.value)}>{fixedCostOptions.domain.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
-            <SelectField label="Biaya hosting / server" value={hosting} onChange={e => setHosting(e.target.value)}>{fixedCostOptions.hosting.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
-            <SelectField label="Tools / API / software" value={tools} onChange={e => setTools(e.target.value)}>{fixedCostOptions.tools.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
-            <SelectField label="Marketing / acquisition" value={marketingCostRate} onChange={e => setMarketingCostRate(Number(e.target.value))}>{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
-            <SelectField label="Overhead project" value={overheadRate} onChange={e => setOverheadRate(Number(e.target.value))} hint="Transport, meeting, listrik, dan kebutuhan kecil">{percentOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</SelectField>
-            <MoneyInput label="Biaya lain-lain" value={otherCost} onChange={setOtherCost} hint="Outsource, aset, atau kebutuhan khusus"/>
+            <SelectField label="Domain" value={domain} onChange={event => setDomain(event.target.value)}>{costOptions.domain.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Hosting / server" value={hosting} onChange={event => setHosting(event.target.value)}>{costOptions.hosting.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <SelectField label="Database (opsional)" value={database} onChange={event => setDatabase(event.target.value)}>{costOptions.database.map(([id, label, value]) => <option value={id} key={id}>{label} — {rupiah(value)}</option>)}</SelectField>
+            <MoneyInput label="Biaya lain-lain (opsional)" value={otherCost} onChange={setOtherCost} hint="API, tools, outsource, transport, dan lainnya"/>
           </div>
-          <div className="cost-breakdown">
+          <div className="cost-breakdown general-cost-breakdown">
             <div><Globe2 size={15}/><span>Domain</span><b>{rupiah(domainCost)}</b></div>
             <div><HardDrive size={15}/><span>Hosting / server</span><b>{rupiah(hostingCost)}</b></div>
-            <div><WalletCards size={15}/><span>Tools / API</span><b>{rupiah(toolsCost)}</b></div>
-            <div><Megaphone size={15}/><span>Marketing</span><b>{rupiah(marketingCost)}</b></div>
-            <div><ReceiptText size={15}/><span>Overhead + lainnya</span><b>{rupiah(overheadCost + otherCost)}</b></div>
+            <div><Database size={15}/><span>Database</span><b>{rupiah(databaseCost)}</b></div>
+            <div><ReceiptText size={15}/><span>Lain-lain</span><b>{rupiah(otherCost)}</b></div>
           </div>
         </article>
       </section>
@@ -277,26 +175,26 @@ function App() {
       <aside className="result-column">
         <article className="result-card">
           <div className="result-label"><span>LIVE RESULT</span><CircleDollarSign size={19}/></div>
-          <div className="selling-price"><span>Harga project</span><strong>{rupiah(sellingPrice)}</strong><small>{base.name}{discount > 0 ? ` · total diskon -${rupiah(discount)}` : ""}</small></div>
-          <div className="result-math"><div><span>Biaya langsung</span><b>- {rupiah(directCosts)}</b></div><div className={netRevenue < 0 ? "net loss" : "net"}><span>{netRevenue < 0 ? "Proyeksi rugi" : "Revenue bersih"}</span><b>{rupiah(netRevenue)}</b></div></div>
+          <div className="selling-price"><span>Harga setelah diskon</span><strong>{rupiah(finalPrice)}</strong><small>{projectName || "Project belum diberi nama"}{totalDiscount > 0 ? ` · diskon -${rupiah(totalDiscount)}` : ""}</small></div>
+          <div className="result-math"><div><span>Biaya project</span><b>- {rupiah(directCosts)}</b></div><div className={netRevenue < 0 ? "net loss" : "net"}><span>{netRevenue < 0 ? "Proyeksi rugi" : "Revenue bersih"}</span><b>{rupiah(netRevenue)}</b></div></div>
           <div className={`margin-banner ${margin < 50 ? "low" : margin < 70 ? "medium" : "healthy"}`}><TrendingUp size={17}/><div><span>Net margin</span><strong>{margin.toFixed(1)}%</strong></div><small>{netRevenue < 0 ? "Biaya melebihi harga project" : margin < 50 ? "Margin tipis — review biaya/harga" : margin < 70 ? "Cukup sehat" : "Margin sehat"}</small></div>
-          <div className="pool-preview"><div><i style={{ width: "40%" }}/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div><i style={{ width: "30%" }}/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div><i style={{ width: "30%" }}/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>
+          <div className="pool-preview"><div className="developer"><i/><span>Developer</span><b>{rupiah(developerPool)}</b><small>40%</small></div><div className="marketing"><i/><span>Marketing</span><b>{rupiah(marketingPool)}</b><small>30%</small></div><div className="company"><i/><span>Kas</span><b>{rupiah(companyPool)}</b><small>30%</small></div></div>
           <div className="result-actions"><button onClick={copySummary}>{copied ? <Check size={15}/> : <Copy size={15}/>} {copied ? "Tersalin" : "Copy ringkasan"}</button><button onClick={() => window.print()}><Printer size={15}/> Print</button></div>
         </article>
       </aside>
     </main>
 
     <section className="distribution-section">
-      <div className="distribution-head"><div><span className="overline">PASAL 3 · PEMBAGIAN HASIL USAHA</span><h2>Pembagian dari revenue bersih.</h2><p>Nominal otomatis mengikuti hasil positif setelah seluruh biaya langsung project dikurangi.</p></div><div className="net-stamp"><span>AVAILABLE TO DISTRIBUTE</span><strong>{rupiah(distributableRevenue)}</strong></div></div>
+      <div className="distribution-head"><div><span className="overline">PASAL 3 · PEMBAGIAN HASIL USAHA</span><h2>Pembagian dari revenue bersih.</h2><p>Pool baru dibagikan setelah seluruh diskon dan biaya project dikurangi.</p></div><div className="net-stamp"><span>AVAILABLE TO DISTRIBUTE</span><strong>{rupiah(distributableRevenue)}</strong></div></div>
       <div className="pool-grid">
         <article className="pool-card developer"><header><div><Code2 size={20}/><span>Developer Pool</span></div><strong>{rupiah(developerPool)}</strong><small>40% NET REVENUE</small></header><SplitTable rows={developerSplit} pool={developerPool} color="#00b4d8"/></article>
         <article className="pool-card marketing"><header><div><Megaphone size={20}/><span>Marketing Pool</span></div><strong>{rupiah(marketingPool)}</strong><small>30% NET REVENUE</small></header><SplitTable rows={marketingSplit} pool={marketingPool} color="#ff5a5f"/></article>
         <article className="pool-card company"><header><div><Landmark size={20}/><span>Kas Perusahaan</span></div><strong>{rupiah(companyPool)}</strong><small>30% NET REVENUE</small></header><SplitTable rows={companySplit} pool={companyPool} color="#d7ff3f" company/></article>
       </div>
-      <div className="distribution-note"><Sparkles size={17}/><p><strong>Catatan:</strong> Operasional di Kas Perusahaan adalah alokasi kas untuk operasional perusahaan setelah project selesai. Ini berbeda dari biaya langsung project yang sudah dikurangi di bagian atas.</p></div>
+      <div className="distribution-note"><Sparkles size={17}/><p><strong>Urutan hitung:</strong> harga project dikurangi diskon, lalu dikurangi domain, hosting/server, database, dan biaya lain. Sisa positifnya menjadi revenue bersih untuk pembagian 40/30/30.</p></div>
     </section>
 
-    <footer className="app-footer"><span>Solivate Studio · Internal Finance Calculator</span><span>Harga, biaya, dan pembagian tersimpan otomatis di perangkat ini.</span></footer>
+    <footer className="app-footer"><span>Solivate Studio · General Project Calculator</span><span>Seluruh data tersimpan otomatis di perangkat ini.</span></footer>
   </div>;
 }
 
